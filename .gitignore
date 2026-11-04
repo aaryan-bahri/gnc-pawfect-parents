@@ -1,0 +1,24 @@
+# Team notes and design docs: kept locally, not part of the repo
+CLAUDE.md
+GAME_DESIGN.md
+
+# Generated approval previews (rebuilt with: python tools/sprites.py --group N)
+tools/preview/
+
+# Python / Node
+__pycache__/
+*.pyc
+node_modules/
+
+# Editor, OS and local tool settings
+.vscode/
+.idea/
+.claude/
+.DS_Store
+Thumbs.db
+
+# Local packaging and secrets
+*.zip
+deploy/
+.env
+.env.*

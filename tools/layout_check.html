@@ -1,0 +1,82 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Layout check</title>
+<!-- Dev harness: measures every card/bubble text with real Phaser + Pixelify Sans and checks the layout.
+     Serve from the repo root (python -m http.server 8000) and open /tools/layout_check.html -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap">
+<style>body{margin:0;background:#222;color:#eee;font:14px monospace} #out{padding:8px;white-space:pre}</style>
+<div id="game"></div>
+<div id="out">running...</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js"></script>
+<script type="module">
+import { LEVEL1, CUTSCENES, fill } from '../src/content.js';
+import { CARD, cardLayout, bodyWrapWidth } from '../src/layout.js';
+
+const NAME = 'Marshmallo';   // longest allowed name (10 chars)
+const FONT = { fontFamily: '"Pixelify Sans"', color: '#5A3E36' };
+const SPEECH = { width: 420, pad: 12, maxH: 150 };   // parent bubble: must stay above the floor (y < 280)
+
+// gather every string shown in a fact card (keys `fact`/`tip`) and every parent line
+const facts = [], speech = [];
+(function walk(o) {
+  for (const [k, v] of Object.entries(o)) {
+    if (typeof v === 'string') (k === 'fact' || k === 'tip' ? facts : speech).push(fill(v, NAME));
+    else if (v && typeof v === 'object') walk(v);
+  }
+})({ LEVEL1, CUTSCENES });
+const speechLines = speech.filter(s => s.length > 12);   // skip ids / labels
+
+await document.fonts.load('14px "Pixelify Sans"');
+await document.fonts.load('600 18px "Pixelify Sans"');
+
+class Check extends Phaser.Scene {
+  preload() {
+    this.load.image('card_bad', '../assets/ui/card_bad.png');
+    this.load.spritesheet('button_mint', '../assets/ui/button_mint.png', { frameWidth: 16, frameHeight: 14 });
+    this.load.image('icon_bulb', '../assets/ui/icon_bulb.png');
+  }
+  create() {
+    const results = [];
+    const measure = (s, size, w) => {
+      const t = this.add.text(0, 0, s, { ...FONT, fontSize: size + 'px', wordWrap: { width: w } });
+      const out = { h: t.height, w: t.width };
+      t.destroy();
+      return out;
+    };
+    let worst = null;
+    for (const s of facts) {
+      const m = measure(s, 14, bodyWrapWidth());
+      const L = cardLayout(m.h);
+      const ok = L.bodyY + m.h + CARD.gap <= L.buttonY && L.buttonY + CARD.buttonH + CARD.pad <= L.h
+                 && m.w <= bodyWrapWidth() && L.fits;
+      results.push({ kind: 'card', ok, h: L.h, bodyH: m.h, text: s.slice(0, 48) });
+      if (!worst || L.h > worst.L.h) worst = { s, L, m };
+    }
+    for (const s of speechLines) {
+      const m = measure(s, 16, SPEECH.width - 2 * SPEECH.pad);
+      const h = m.h + 2 * SPEECH.pad;
+      results.push({ kind: 'speech', ok: h <= SPEECH.maxH && m.w <= SPEECH.width - 2 * SPEECH.pad, h, text: s.slice(0, 48) });
+    }
+
+    // draw the tallest card exactly as the game will
+    const { s, L } = worst, x = (640 - CARD.width) / 2, y = (360 - L.h) / 2;
+    this.add.nineslice(x, y, 'card_bad', null, CARD.width / 2, L.h / 2, 6, 6, 6, 6).setOrigin(0).setScale(2);
+    this.add.image(x + CARD.pad, y + L.titleY, 'icon_bulb').setOrigin(0).setScale(2);
+    this.add.text(x + CARD.pad + 40, y + L.titleY + 6, 'Did you know?', { ...FONT, fontSize: '18px', fontStyle: '600', color: '#C95A52' });
+    this.add.text(x + CARD.pad, y + L.bodyY, s, { ...FONT, fontSize: '14px', wordWrap: { width: bodyWrapWidth() } });
+    this.add.nineslice(x + (CARD.width - CARD.buttonW) / 2, y + L.buttonY, 'button_mint', 0, CARD.buttonW / 2, CARD.buttonH / 2, 5, 5, 5, 5)
+      .setOrigin(0).setScale(2);
+    this.add.text(320, y + L.buttonY + 5, 'OK!', { ...FONT, fontSize: '15px' }).setOrigin(0.5, 0);
+
+    const failed = results.filter(r => !r.ok);
+    const summary = `${failed.length ? 'FAIL' : 'PASS'}: ${results.length} texts checked ` +
+      `(${facts.length} cards, ${speechLines.length} speech). Tallest card ${worst.L.h}px of ${CARD.maxH}.`;
+    document.getElementById('out').textContent = summary + '\n' +
+      results.map(r => `${r.ok ? 'ok  ' : 'FAIL'} ${r.kind.padEnd(6)} h=${String(Math.round(r.h)).padStart(3)}  ${r.text}`).join('\n');
+    console.log('[layout]', summary, JSON.stringify(failed));
+  }
+}
+
+new Phaser.Game({ type: Phaser.AUTO, parent: 'game', width: 640, height: 360, pixelArt: true,
+  backgroundColor: '#FFF4E0', scale: { mode: Phaser.Scale.NONE, zoom: 2 }, scene: Check });
+</script>
