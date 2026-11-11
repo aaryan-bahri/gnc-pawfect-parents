@@ -31,6 +31,15 @@ GROUP_INFO = {
         'Two things for phones and tablets. First, the dog setup screen with an on-screen keyboard, so a name can be typed without a '
         'physical keyboard (it is built from the approved cream buttons and cards, and a real keyboard still works on a computer). '
         'Second, a screen that asks players to turn a phone sideways, since the game is wide. Only the small turn-your-phone icon is new art.', set()),
+    6: ('Level 2: the Vet Clinic',
+        'Everything for the check-up task: a sky-blue clinic with an exam table, the vet (full-length and as a portrait), a nervous young dog '
+        'on the table, four magnifying-glass close-ups (teeth, coat, paws, ears), and the four shopping-list icons. Also two cutscene panels '
+        '(arriving at the clinic, the vaccine) and the adult dog for the next growth cutscene. The pet store comes in group 7.', set()),
+    7: ('Level 2: the Pet Store',
+        'The shopping trip. A lavender store with a four-aisle shelf unit and a till, 20 items to shop for (the needs from the vet and the parent, '
+        'optional wants, and look-alikes that test what the vet taught), a coin jar for the budget, a basket and aisle arrows. The shopping list '
+        'paper from group 6 stays on the left and fills with ticks. Item names are shown in the card that opens when an item is tapped, so '
+        'the shelves only show prices.', set()),
 }
 
 

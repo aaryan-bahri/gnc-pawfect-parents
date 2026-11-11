@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pawfect Parents: Player Decision Tree</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;600&display=swap">
+<style>
+:root {
+  --paper:#FFF4E0; --card:#FFFDF7; --ink:#5A3E36; --dim:#8a6f66; --line:#C9A27F; --soft:#F3E4CB;
+  --lav:#D7C4EC; --lav-d:#B39DD6; --butter:#FFE08A; --butter-d:#E0B53F; --mint:#B8E0C2; --mint-d:#6FA07E;
+  --coral:#F9D5D1; --coral-d:#E8746A; --sky:#BFE3F2; --sky-d:#6FAFCB;
+  --lo1:#E8746A; --lo2:#F2C55C; --lo3:#8DBF9A; --lo4:#8FC3DB; --lo5:#B39DD6; --ctx:#B9855A;
+  --display:"Pixelify Sans",ui-monospace,Consolas,monospace; --body:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  color-scheme:light;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--paper); color:var(--ink); font:14px/1.45 var(--body); }
+.wrap { padding:0 max(20px, env(safe-area-inset-left, 0px)) 60px; max-width:none; }
+h1,h2 { font-family:var(--display); font-weight:600; margin:0; text-wrap:balance; }
+h1 { font-size:34px; line-height:1.1; }
+h2 { font-size:24px; }
+a { color:inherit; }
+
+/* ---------- header + controls */
+.top { padding:28px 0 8px; }
+.top p { max-width:80ch; margin:8px 0 0; color:var(--dim); }
+.bar { position:sticky; top:0; z-index:20; background:var(--paper); border-bottom:2px solid var(--ink); padding:10px 0; margin:14px 0 0; display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+.bar b { font-family:var(--display); font-weight:600; }
+.group { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+button, input { font:inherit; color:inherit; }
+.btn { background:var(--card); border:2px solid var(--ink); padding:4px 10px; cursor:pointer; box-shadow:2px 2px 0 var(--ink); }
+.btn:hover { background:var(--butter); }
+.btn:focus-visible, .box:focus-visible, .chip:focus-visible, .nav a:focus-visible { outline:3px solid var(--coral-d); outline-offset:2px; }
+input[type=search] { background:var(--card); border:2px solid var(--ink); padding:4px 8px; width:210px; }
+.chip { border:2px solid var(--ink); background:var(--card); padding:2px 9px; cursor:pointer; display:inline-flex; gap:6px; align-items:center; }
+.chip i, .lo { font-style:normal; font-weight:700; font-size:11px; letter-spacing:.04em; padding:1px 6px; border:1.5px solid var(--ink); }
+.chip[aria-pressed=true] { background:var(--butter); box-shadow:2px 2px 0 var(--ink); }
+.lo1 { background:var(--lo1); } .lo2 { background:var(--lo2); } .lo3 { background:var(--lo3); } .lo4 { background:var(--lo4); } .lo5 { background:var(--lo5); } .ctx { background:#E8CFB5; }
+.nav { display:flex; flex-wrap:wrap; gap:4px 14px; padding:8px 0 0; font-size:13px; }
+.status { color:var(--dim); font-size:13px; margin-left:auto; }
+.legend { display:flex; flex-wrap:wrap; gap:6px 16px; padding:12px 0 0; font-size:12.5px; color:var(--dim); }
+.legend span { display:inline-flex; align-items:center; gap:6px; }
+.sw { width:16px; height:12px; border:2px solid var(--ink); display:inline-block; }
+
+/* ---------- sections */
+.page { padding:28px 0 8px; }
+.sec-hd { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:baseline; margin-bottom:6px; }
+.sec-hd .los { display:flex; gap:6px; }
+.desc { max-width:100ch; color:var(--dim); margin:0 0 14px; }
+.scroll { overflow-x:auto; padding:6px 4px 18px; }
+.flow { display:flex; flex-wrap:wrap; align-items:stretch; gap:10px 0; }
+.step { width:250px; background:var(--lav); border:2px solid var(--lav-d); padding:8px 10px; position:relative; margin-right:34px; text-decoration:none; }
+.step:hover { background:#E6D8F4; }
+.step .num { position:absolute; left:-2px; top:-2px; background:var(--ink); color:var(--paper); font:700 12px/1 var(--display); padding:4px 7px; }
+.step b { padding-left:24px; }
+.step b { display:block; }
+.step small { color:var(--dim); display:block; margin:2px 0 4px; }
+
+/* ---------- the tree: left to right, each node's children stacked to its right */
+.node { display:flex; align-items:center; }
+.kids { display:flex; flex-direction:column; position:relative; }
+.kids::before { content:""; position:absolute; left:0; top:50%; width:24px; border-top:2px solid var(--line); }
+.kid { position:relative; padding:6px 0 6px 48px; }
+.kid::before { content:""; position:absolute; left:24px; top:50%; width:24px; border-top:2px solid var(--line); }
+.kid::after { content:""; position:absolute; left:24px; top:0; bottom:0; border-left:2px solid var(--line); }
+.kid:first-child::after { top:50%; } .kid:last-child::after { bottom:50%; } .kid:only-child::after { display:none; }
+.node.closed > .kids { display:none; }
+
+.box { position:relative; border:2px solid var(--ink); background:var(--card); padding:8px 11px 9px; width:260px; box-shadow:3px 3px 0 rgba(90,62,54,.25); }
+.box.has-kids { cursor:pointer; }
+.box.has-kids::after { content:"–"; position:absolute; right:-11px; top:50%; margin-top:-10px; width:20px; height:20px; border:2px solid var(--ink); background:var(--card); border-radius:50%; font:700 14px/16px var(--body); text-align:center; z-index:2; }
+.node.closed > .box.has-kids::after { content:"+"; background:var(--butter); }
+.t-scene { width:330px; background:var(--lav); border-color:var(--lav-d); }
+.t-decision { width:310px; background:var(--butter); border-color:var(--butter-d); }
+.t-action { width:236px; background:var(--card); }
+.t-outcome { width:390px; }
+.t-outcome.good { background:#E4F4E8; border-color:var(--mint-d); }
+.t-outcome.bad { background:#FCE6E3; border-color:var(--coral-d); }
+.t-outcome.info { background:#E6F4FA; border-color:var(--sky-d); }
+.t-outcome.neutral { background:#F6EEE0; border-color:var(--line); }
+.t-system { width:330px; background:#EEE6D8; border-color:var(--dim); border-style:dashed; }
+.hd { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.kind { font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
+.ttl { font-weight:700; font-size:14px; }
+.meter { margin-left:auto; font-weight:700; font-size:12px; padding:0 7px; border:2px solid var(--ink); background:var(--card); font-variant-numeric:tabular-nums; }
+.meter.up { background:var(--mint); } .meter.down { background:var(--coral); }
+.sub { margin:3px 0 0; font-size:12.5px; color:var(--dim); }
+.dog { margin:5px 0 0; font-size:12.5px; font-style:italic; }
+.say { margin:6px 0 0; font-size:13px; padding-left:8px; border-left:4px solid var(--line); }
+.say b { font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; display:block; color:var(--dim); }
+.say.parent { border-color:var(--coral-d); } .say.vet { border-color:var(--sky-d); } .say.hint { border-color:var(--butter-d); } .say.sys { border-color:var(--dim); }
+.card { margin:7px 0 0; padding:5px 8px; font-size:12.5px; border:2px solid var(--ink); background:var(--card); }
+.card b { display:block; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; }
+.card.good { border-color:var(--mint-d); } .card.good b { color:#3F7B52; }
+.card.bad { border-color:var(--coral-d); } .card.bad b { color:#B6453D; }
+.card.info { border-color:var(--sky-d); } .card.info b { color:#2F7A9B; }
+.note { margin:6px 0 0; font-size:12px; color:var(--dim); }
+.los { display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; }
+
+/* filtering */
+.box.dim { opacity:.22; }
+.box.via { opacity:.62; }
+.box.found { outline:3px solid var(--coral-d); outline-offset:1px; }
+
+/* ---------- static render (PNG / PDF) */
+body.static { width:max-content; min-width:100%; }
+body.static .bar, body.static .nav, body.static .btn { display:none; }
+body.static .scroll { overflow:visible; }
+body.static .box { box-shadow:none; }
+body.static .page { padding-left:40px; padding-right:40px; }
+body.static.print .page { break-after:page; break-inside:avoid; }
+body.static.print .page:last-child, body.static.print .page .page { break-after:auto; }   /* the overview sits inside the title page */
+.foot { color:var(--dim); font-size:12.5px; padding:24px 0 0; max-width:110ch; }
+@media (max-width:700px) { .bar { position:static; } input[type=search] { width:100%; } }
+@media (prefers-reduced-motion:no-preference) { .box { transition:opacity .15s; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="root">
+  <div class="page" id="p-top">
+    <header class="top">
+      <h1>Pawfect Parents: player decision tree</h1>
+      <p id="intro"></p>
+    </header>
+    <div class="bar" id="bar">
+      <div class="group"><button class="btn" id="expand">Expand all</button><button class="btn" id="collapse">Collapse all</button></div>
+      <div class="group"><b>Show learning objective:</b><span id="chips"></span></div>
+      <div class="group"><input id="q" type="search" placeholder="Search the dialogue" aria-label="Search the dialogue"></div>
+      <div class="status" id="status" role="status"></div>
+    </div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div id="sections"></div>
+</div>
+<p class="foot" id="foot"></p>
+<script id="data" type="application/json">{"intro":"Every action a player can take in Levels 1 and 2, what the game says or shows in reply, and the learning objective each reply serves. The dog is called Biscuit here; in the game it is the name the player chose. Built from the game’s own text, so it matches what players see. Level 3 is not built yet and is not included.","foot":"Generated 2026-11-04 by tools/decision_tree/build.mjs from src/content.js (128 boxes). Learning objectives are defined in GAME_DESIGN.md section 1.2. Meter changes are in points on a 0 to 100 scale.","los":[{"id":"LO1","short":"LO1 Safe foods","text":"Tell safe foods from toxic ones, and explain why some human foods are dangerous"},{"id":"LO2","short":"LO2 Potty cues and spot","text":"Recognise potty cues and choose a good toilet spot"},{"id":"LO3","short":"LO3 Positive reinforcement","text":"Use positive reinforcement instead of punishment"},{"id":"LO4","short":"LO4 Health checks","text":"Check basic health signs (teeth, ears, coat, nails) and link each one to the right care"},{"id":"LO5","short":"LO5 Needs and budget","text":"Buy what a pet actually needs within a budget and a time limit"},{"id":"CTX","short":"Context / empathy","text":"Story, naming the dog and caring for it: motivation rather than a taught fact"}],"sections":[{"id":"overview","title":"How a play-through flows","desc":"Click a step to jump to its decision tree. Each tree reads from left to right: a decision point, what the player can do, and what the game says back, with the learning objective (LO) each answer serves.","flow":[{"title":"Title and dog setup","sub":"Name and colour the dog","lo":["CTX"],"go":"setup"},{"title":"Opening cutscene","sub":"The parent explains the jobs","lo":["CTX","LO1","LO2"],"go":"setup"},{"title":"Level 1, Task 1: Snack Time","sub":"Safe or unsafe food, 3 rounds","lo":["LO1"],"go":"snack"},{"title":"Level 1, Task 2: Potty Training","sub":"Place the pad, lead, reward","lo":["LO2","LO3"],"go":"potty"},{"title":"Album and growth","sub":"Puppy becomes a young dog","lo":["LO1","LO2"],"go":"albums"},{"title":"Level 2, Task 1: Help the Vet","sub":"Four checks build the list","lo":["LO4"],"go":"vet"},{"title":"Level 2, Task 2: Pet Store Run","sub":"Needs, wants and a budget","lo":["LO5","LO4"],"go":"shop"},{"title":"Album and growth","sub":"Young dog becomes an adult","lo":["LO4","LO5"],"go":"albums"},{"title":"Rules in every task","sub":"Meter, hints, retry, pause","lo":[],"go":"rules"}]},{"id":"setup","title":"Start: dog setup and the opening cutscene","nav":"Start and setup","lo":["CTX","LO1","LO2"],"desc":"The player names and chooses their dog before anything is taught, so that they care what happens to it. Then a four-panel story sets up the first two skills.","roots":[{"t":"decision","title":"Dog setup screen","sub":"A puppy wagging on a rug, three coat swatches, a name field with an on-screen keyboard (a real keyboard works too), a Random button and Adopt!.","lo":["CTX"],"kids":[{"t":"action","title":"Tap a coat swatch (cream, caramel or chocolate)","kids":[{"t":"outcome","tone":"neutral","title":"The puppy changes colour","dog":"The puppy wags in the new coat and a wag sound plays. The whole game uses this coat.","lo":["CTX"]}]},{"t":"action","title":"Type a name (up to 10 letters)","kids":[{"t":"outcome","tone":"neutral","title":"The name appears","dog":"The first key replaces the suggested name. The first letter is a capital, the rest are lowercase.","lo":["CTX"]}]},{"t":"action","title":"Tap Random","kids":[{"t":"outcome","tone":"neutral","title":"A random name","note":"One of 10: Biscuit, Mochi, Pepper, Noodle, Waffles, Bean, Pip, Toffee, Maple, Scout.","lo":["CTX"]}]},{"t":"action","title":"Tap Adopt!","kids":[{"t":"scene","title":"Opening cutscene (4 panels, tap to continue, Skip is available)","lines":[{"who":"Parent","text":"We're bringing home a new puppy today!","cls":"parent"},{"who":"Parent","text":"Welcome home, Biscuit! Everything smells new.","cls":"parent"},{"who":"Parent","text":"Taking care of Biscuit is your job now. Don't worry, I'll help at first.","cls":"parent"},{"who":"Parent","text":"Puppies need the right food, and they need to learn where to go potty. Let's start there!","cls":"parent"}],"note":"Panels: the drive home, arriving at the porch, the PUPPY JOBS chart on the fridge, and the puppy’s new things. If the name is empty, a random name is used. Level 1 starts next.","lo":["CTX","LO1","LO2"]}]}]}]},{"id":"snack","title":"Level 1, Task 1: Snack Time","nav":"L1 Snack Time","lo":["LO1"],"desc":"Good food or bad food. Three rounds, each a safe food against an unsafe one. A right pick is rewarded and explained; a wrong pick is a gentle nudge with a safety fact, never a punishment.","roots":[{"t":"decision","title":"Start of the task","sub":"The puppy sits by its bowl with a bowl thought bubble. A yellow arrow points at the kitchen counter. Meter drain: 0.25 per second.","lines":[{"who":"Parent","text":"Biscuit's hungry! Pick something safe from the counter.","cls":"parent"}],"lo":["LO1"],"kids":[{"t":"action","title":"Tap the counter","kids":[{"t":"decision","title":"Counter close-up: three rounds","sub":"The player must get all three rounds right to finish.","lo":["LO1"],"kids":[{"t":"decision","title":"Round 1 of 3: Puppy kibble or Chocolate bar","sub":"The two foods sit on wooden boards; which side each is on is random.","lo":["LO1"],"kids":[{"t":"action","title":"Pick Puppy kibble","kids":[{"t":"outcome","tone":"good","title":"Safe pick","dog":"The puppy walks to its bowl, sniffs, eats, then wags (happy chime).","meter":"+20","lo":["LO1"],"cards":[{"kind":"good","title":"Did you know?","text":"Puppy kibble has everything a growing puppy needs."}],"lines":[],"note":"Next: round 2. Parent: “Biscuit is hungry again! Which food is safe this time?”"}]},{"t":"action","title":"Pick Chocolate bar","kids":[{"t":"outcome","tone":"bad","title":"Unsafe pick","dog":"The puppy sniffs, refuses, and shows a tummy-ache thought bubble. The dog never eats the unsafe food.","meter":"−5","lo":["LO1"],"cards":[{"kind":"bad","title":"Did you know?","text":"Chocolate contains theobromine, which dogs can't break down. Even a little can make them very sick."}],"lines":[{"who":"Parent","text":"Good thing Biscuit didn't eat it. I'll put that up high where they can't reach.","cls":"parent"}],"note":"The parent puts it up in the high cupboard (safe storage). The same pair comes back with the sides swapped. Parent: “Look again at both foods. Which one is safe for Biscuit?”. If the same wrong food is picked again, the card is not shown twice."}]}]},{"t":"decision","title":"Round 2 of 3: Carrot sticks or Grapes","sub":"The two foods sit on wooden boards; which side each is on is random.","lo":["LO1"],"kids":[{"t":"action","title":"Pick Carrot sticks","kids":[{"t":"outcome","tone":"good","title":"Safe pick","dog":"The puppy walks to its bowl, sniffs, eats, then wags (happy chime).","meter":"+20","lo":["LO1"],"cards":[{"kind":"good","title":"Did you know?","text":"Carrots are a crunchy, healthy snack for dogs."}],"lines":[],"note":"Next: round 3. Parent: “One more snack! Choose carefully.”"}]},{"t":"action","title":"Pick Grapes","kids":[{"t":"outcome","tone":"bad","title":"Unsafe pick","dog":"The puppy sniffs, refuses, and shows a tummy-ache thought bubble. The dog never eats the unsafe food.","meter":"−5","lo":["LO1"],"cards":[{"kind":"bad","title":"Did you know?","text":"Grapes and raisins can hurt a dog's kidneys, even in small amounts."}],"lines":[{"who":"Parent","text":"Good thing Biscuit didn't eat it. I'll put that up high where they can't reach.","cls":"parent"}],"note":"The parent puts it up in the high cupboard (safe storage). The same pair comes back with the sides swapped. Parent: “Look again at both foods. Which one is safe for Biscuit?”. If the same wrong food is picked again, the card is not shown twice."}]}]},{"t":"decision","title":"Round 3 of 3: Cooked chicken or Red onion","sub":"The two foods sit on wooden boards; which side each is on is random.","lo":["LO1"],"kids":[{"t":"action","title":"Pick Cooked chicken","kids":[{"t":"outcome","tone":"good","title":"Safe pick","dog":"The puppy walks to its bowl, sniffs, eats, then wags (happy chime).","meter":"+20","lo":["LO1"],"cards":[{"kind":"good","title":"Did you know?","text":"Cooked chicken is a safe treat. Take the meat off the bone first, and skip the skin and seasoning."}],"lines":[{"who":"Parent","text":"Great choices! Biscuit has a happy tummy.","cls":"parent"}],"note":"That was the last round: Potty Training starts."}]},{"t":"action","title":"Pick Red onion","kids":[{"t":"outcome","tone":"bad","title":"Unsafe pick","dog":"The puppy sniffs, refuses, and shows a tummy-ache thought bubble. The dog never eats the unsafe food.","meter":"−5","lo":["LO1"],"cards":[{"kind":"bad","title":"Did you know?","text":"Onions and garlic harm a dog's blood, whether cooked or raw."}],"lines":[{"who":"Parent","text":"Good thing Biscuit didn't eat it. I'll put that up high where they can't reach.","cls":"parent"}],"note":"The parent puts it up in the high cupboard (safe storage). The same pair comes back with the sides swapped. Parent: “Look again at both foods. Which one is safe for Biscuit?”. If the same wrong food is picked again, the card is not shown twice."}]}]}]}]},{"t":"action","title":"Do nothing for 15 seconds","kids":[{"t":"outcome","tone":"info","title":"Idle hint","lines":[{"who":"Parent (idle hint)","text":"Dogs need dog food or plain, simple foods. Sweets and some fruits are dangerous.","cls":"hint"}],"lo":["LO1"]}]}]}]},{"id":"potty","title":"Level 1, Task 2: Potty Training","nav":"L1 Potty Training","lo":["LO2","LO3"],"desc":"Place the pad, then read the puppy’s signs and lead it with a treat, and reward it right away. This is where positive reinforcement is taught, and where scolding is shown not to work.","roots":[{"t":"decision","title":"Part A: place the pad","sub":"Three yellow arrows point at the possible spots. The pad can be dragged.","lines":[{"who":"Parent","text":"Where should Biscuit's potty pad go? Drag it to a good spot.","cls":"parent"}],"lo":["LO2"],"kids":[{"t":"action","title":"Drop the pad next to the food bowl","kids":[{"t":"outcome","tone":"bad","title":"Poor spot","meter":"−5","lo":["LO2"],"cards":[{"kind":"bad","title":"Did you know?","text":"Dogs don't like to go potty near where they eat."}],"note":"The pad slides back and the player tries again. If the same wrong spot is chosen again, the card is not repeated."}]},{"t":"action","title":"Drop the pad the middle of the room (the rug)","kids":[{"t":"outcome","tone":"bad","title":"Poor spot","meter":"−5","lo":["LO2"],"cards":[{"kind":"bad","title":"Did you know?","text":"The middle of the room is busy and stressful, so the puppy may avoid it."}],"note":"The pad slides back and the player tries again. If the same wrong spot is chosen again, the card is not repeated."}]},{"t":"action","title":"Drop the pad the quiet corner by the garden door","kids":[{"t":"outcome","tone":"good","title":"Best spot","meter":"+20","lo":["LO2"],"cards":[{"kind":"good","title":"Did you know?","text":"A quiet corner by the door makes it easier to move to outdoor potty later."}],"note":"Part B starts."}]},{"t":"action","title":"Drop the pad away from all three spots","kids":[{"t":"outcome","tone":"neutral","title":"Pad slides back","note":"No message and no change to the meter."}]},{"t":"action","title":"Do nothing for 15 seconds","kids":[{"t":"outcome","tone":"info","title":"Idle hint","lines":[{"who":"Parent (idle hint)","text":"Dogs like a quiet potty spot, away from where they eat and sleep.","cls":"hint"}],"lo":["LO2"]}]}]},{"t":"decision","title":"Part B: read the signs and lead the puppy (two successes needed)","sub":"The puppy wanders for a few seconds, then sniffs the floor and circles. A thought bubble shows a droplet. The treat sits on the counter.","lines":[{"who":"Parent","text":"Now watch Biscuit closely. They'll show you when they need to go!","cls":"parent"}],"lo":["LO2","LO3"],"kids":[{"t":"decision","title":"The puppy sniffs and circles (12 second window)","sub":"The explanation appears the moment the signs start, whatever the player is doing. A yellow arrow points at the treat.","lines":[{"who":"Parent","text":"Biscuit is sniffing and circling. That means \"I need to go!\" Drag the treat from the counter to lead them to the pad.","cls":"parent"},{"who":"Parent, second time","text":"Biscuit is sniffing again! Lead them to the pad.","cls":"parent"}],"lo":["LO2"],"kids":[{"t":"action","title":"Drag the treat and keep holding it so the puppy follows it onto the pad","kids":[{"t":"outcome","tone":"neutral","title":"The puppy goes potty on the pad","dog":"It follows the treat, reaches the pad, pees for a moment, then wags with a treat thought bubble.","lines":[{"who":"Parent","text":"Biscuit went on the pad! Reward them right away: drop the treat on Biscuit.","cls":"parent"}],"lo":["LO2"],"kids":[{"t":"decision","title":"Reward right away","sub":"A yellow arrow points at the puppy.","lo":["LO3"],"kids":[{"t":"action","title":"Drop the treat on the puppy","kids":[{"t":"outcome","tone":"good","title":"Reward given","dog":"The puppy eats, wags, and a heart floats up.","meter":"+20","lo":["LO3"],"cards":[{"kind":"good","title":"Great job!","text":"That's positive reinforcement! Rewarding good behavior right away is a great way to train a dog. Biscuit learns that using the pad means good things happen."}],"note":"The card is shown the first time only. The second time the parent says: “Biscuit did it again, and you rewarded them right away. That's how puppies learn!”"}]},{"t":"action","title":"Wait 15 seconds","kids":[{"t":"outcome","tone":"info","title":"Idle hint","lines":[{"who":"Parent (idle hint)","text":"Biscuit went on the pad! Reward them right away: drop the treat on Biscuit.","cls":"hint"}],"lo":["LO3"]}]}]}]}]},{"t":"action","title":"Let go of the treat too early","kids":[{"t":"outcome","tone":"neutral","title":"The treat jumps back to the counter","dog":"The puppy keeps circling and waits.","note":"No message. The 12 second timer keeps running.","lo":["LO2"]}]},{"t":"action","title":"Do nothing for 15 seconds","kids":[{"t":"outcome","tone":"info","title":"Idle hint","lines":[{"who":"Parent (idle hint)","text":"Keep holding the treat, and walk slowly so Biscuit keeps following it.","cls":"hint"}],"lo":["LO2"]}]},{"t":"action","title":"Run out of time (12 seconds), or never reach the pad","kids":[{"t":"outcome","tone":"bad","title":"An accident on the floor","dog":"The puppy pees on the floor and a small puddle appears.","lo":["LO3"],"lines":[{"who":"Parent","text":"Oops, an accident on the floor. What do you do?","cls":"parent"}],"kids":[{"t":"action","title":"Scold the puppy","kids":[{"t":"outcome","tone":"bad","title":"Scolded","dog":"The puppy cowers.","meter":"−5","lo":["LO3"],"cards":[{"kind":"bad","title":"Did you know?","text":"Scolding teaches puppies to hide when they go, not where to go."}],"note":"The sniffing and circling starts again."}]},{"t":"action","title":"Clean it up calmly","kids":[{"t":"outcome","tone":"good","title":"Calm clean-up","dog":"The puddle fades away.","meter":"+10","lo":["LO3"],"cards":[{"kind":"good","title":"Did you know?","text":"Clean accidents well. Leftover smell makes a puppy go there again."}],"note":"The sniffing and circling starts again."}]}]}]}]}]},{"t":"outcome","tone":"good","title":"Task complete (two successes)","lines":[{"who":"Parent","text":"Biscuit is learning fast!","cls":"parent"}],"cards":[{"kind":"info","title":"Did you know?","text":"Puppies often need to go after waking up, eating, and playing."}],"lo":["LO2"],"note":"The meter fills and the Day 1 album page appears."}]},{"id":"albums","title":"Album pages and growth cutscenes","nav":"Albums and growth","lo":["LO1","LO2","LO4","LO5"],"desc":"After each level the player sees what they learned on a photo-album page, then the dog grows up. A “Pawfect!” stamp appears when the whole level had no wrong answer.","roots":[{"t":"scene","title":"After Level 1: album page “Day 1”","sub":"You learned: Safe foods and Potty spot.","lo":["LO1","LO2"],"note":"The skills are ticked one at a time. No wrong answers in the whole level gives the Pawfect! stamp; otherwise it says how many slips there were and that this is how we learn.","kids":[{"t":"scene","title":"Growth cutscene: puppy to young dog","lines":[{"who":"Parent","text":"Look how much Biscuit has grown! You're doing a great job.","cls":"parent"}],"note":"Leads to the Level 2 intro cutscene.","lo":["CTX"]}]},{"t":"scene","title":"After Level 2: album page “Check-up Day”","sub":"You learned: Health check and Smart shopping.","lo":["LO4","LO5"],"note":"Same rules as Level 1.","kids":[{"t":"scene","title":"Growth cutscene: young dog to adult","lines":[{"who":"Parent","text":"Look how big Biscuit is now! You're doing a great job.","cls":"parent"}],"note":"Then the end card: “Thanks for playing!”. Level 3 (the park) is not built yet.","lo":["CTX"]}]}]},{"id":"vet","title":"Level 2, Task 1: Help the Vet","nav":"L2 Help the Vet","lo":["LO4"],"desc":"Four health checks, in any order. Each finding is explained by the vet and becomes an item on the shopping list. The player can also calm the nervous dog.","roots":[{"t":"scene","title":"Level 2 intro cutscene","lines":[{"who":"Parent","text":"Time for Biscuit's first check-up! Afterwards we'll buy whatever the vet says Biscuit needs.","cls":"parent"}],"lo":["CTX","LO4","LO5"],"note":"The parent sets the plan: a check-up, then shopping for what the vet says is needed."},{"t":"decision","title":"Start of the task","sub":"A sky-blue clinic. The dog is on the exam table with its ears back and tail tucked. Four spots glow. Meter drain: 0.35 per second.","lines":[{"who":"Vet","text":"Let's check Biscuit from nose to tail. Tap each spot to look closer.","cls":"vet"}],"lo":["LO4"],"kids":[{"t":"action","title":"Tap Teeth (the ring on the dog or the label)","kids":[{"t":"outcome","tone":"good","title":"Close-up: teeth","dog":"A magnifying-glass close-up opens. The meter is paused while it is open.","lines":[{"who":"Vet","text":"Yellow tartar on the teeth! Brushing a few times a week keeps teeth and gums healthy.","cls":"vet"}],"lo":["LO4"],"note":"Dog toothbrush and Dog toothpaste fly onto the shopping list. The pointer arrow is only on this first spot."}]},{"t":"action","title":"Tap Coat (the ring on the dog or the label)","kids":[{"t":"outcome","tone":"good","title":"Close-up: coat","dog":"A magnifying-glass close-up opens. The meter is paused while it is open.","lines":[{"who":"Vet","text":"A flea! Fleas cause itching and can spread illness, so monthly prevention helps.","cls":"vet"}],"lo":["LO4"],"note":"Flea treatment (dog) fly onto the shopping list."}]},{"t":"action","title":"Tap Paws (the ring on the dog or the label)","kids":[{"t":"outcome","tone":"good","title":"Close-up: paws","dog":"A magnifying-glass close-up opens. The meter is paused while it is open.","lines":[{"who":"Vet","text":"Long nails click on the floor. They hurt when walking, so trim them regularly.","cls":"vet"}],"lo":["LO4"],"note":"Nail clippers fly onto the shopping list."}]},{"t":"action","title":"Tap Ears (the ring on the dog or the label)","kids":[{"t":"outcome","tone":"good","title":"Close-up: ears","dog":"A magnifying-glass close-up opens. The meter is paused while it is open.","lines":[{"who":"Vet","text":"A little wax in the ears. A gentle ear cleaner helps, and checking every week keeps them healthy.","cls":"vet"}],"lo":["LO4"],"note":"Ear cleaner (dog) fly onto the shopping list."}]},{"t":"action","title":"Tap the dog (once between checks)","kids":[{"t":"outcome","tone":"good","title":"A calming pat","dog":"The dog wags and a heart floats up.","meter":"+5","lo":["CTX"],"lines":[{"who":"Vet","text":"Biscuit feels calmer. Good job!","cls":"vet"}],"note":"After the first check the vet reminds the player: “Biscuit is a little nervous. Tap Biscuit for a calming pat!”. Only one pat counts per gap between checks. This introduces reading a dog’s stress, which comes back in Level 3."}]},{"t":"action","title":"Do nothing for 25 seconds","kids":[{"t":"outcome","tone":"info","title":"Idle hint","lines":[{"who":"Vet (idle hint)","text":"Tap a glowing spot on Biscuit, or the label next to it. Teeth, coat, paws and ears all need a look.","cls":"hint"}],"lo":["LO4"]}]},{"t":"action","title":"Finish all four checks","kids":[{"t":"outcome","tone":"good","title":"Check-up complete","lines":[{"who":"Vet","text":"That's everything! Biscuit was great. Next up: a vaccine.","cls":"vet"}],"lo":["LO4"],"note":"The shopping list now has five items: Dog toothbrush, Dog toothpaste, Flea treatment (dog), Nail clippers and Ear cleaner (dog).","kids":[{"t":"scene","title":"Vaccine cutscene","lines":[{"who":"Vet","text":"Biscuit was so brave! Vaccines protect against serious diseases, and only a vet can give them.","cls":"vet"}],"lo":["LO4"],"note":"A vaccine is a story beat, not an item to buy: only a vet can give one."}]}]}]}]},{"id":"shop","title":"Level 2, Task 2: Pet Store Run","nav":"L2 Pet Store","lo":["LO5","LO4"],"desc":"Shopping with a budget of 60 coins and a ticking meter. The nine needs cost 54 coins, so there is room for a want or two, but not for everything. Look-alike items test what the vet taught.","roots":[{"t":"decision","title":"Start of the task","sub":"A lavender store with four aisles. Health: Dog toothbrush, Dog toothpaste, Human toothpaste, Flea treatment (dog), Flea treatment (cat), Ear cleaner (dog). Grooming: Nail clippers, Brush, Dog shampoo, Human shampoo. Play & Walk: Chew toy, Squeaky ball, Tiny ball, ID tag, Poop bags. Home & Style: Bandana, Bow, Sweater, Sparkly collar, Dog bed. The meter is paused during the parent’s introduction. Meter drain: 0.35 per second.","lines":[{"who":"Parent","text":"Now let's go shopping for everything the vet said Biscuit needs!","cls":"parent"},{"who":"Parent","text":"Also pick up a brush, an ID tag, a chew toy and poop bags. Here are 60 coins. Needs first, then extras!","cls":"parent"}],"lo":["LO5"],"note":"The parent writes four more lines on the paper list (Brush, ID tag, Chew toy, Poop bags) and hands over 60 coins. Tips from the parent hide after a few seconds so they never cover the shelves.","kids":[{"t":"action","title":"Tap an arrow","kids":[{"t":"outcome","tone":"neutral","title":"The shelves slide to the next aisle","note":"Health, Grooming, Play & Walk, Home & Style, then round again."}]},{"t":"action","title":"Tap an item on a shelf","kids":[{"t":"decision","title":"Item card: name, price, and the coins left after buying","lo":["LO5"],"kids":[{"t":"action","title":"Tap “Not now”","kids":[{"t":"outcome","tone":"neutral","title":"The card closes","note":"Nothing changes."}]},{"t":"action","title":"Tap “Add” on a vet need (Dog toothbrush, Dog toothpaste, Flea treatment (dog), Nail clippers, Ear cleaner (dog))","kids":[{"t":"outcome","tone":"good","title":"A need from the vet","dog":"The item flies into the basket and its box on the paper list gets a tick.","meter":"+10","lo":["LO5","LO4"],"note":"The +10 is given once per item, so taking an item out and back in cannot be farmed. No card: the vet already explained why at the clinic."}]},{"t":"action","title":"Tap “Add” on a need the parent added (Brush, ID tag, Chew toy, Poop bags)","kids":[{"t":"outcome","tone":"good","title":"A need from the parent","dog":"The item flies into the basket and its box on the paper list gets a tick.","meter":"+10","lo":["LO5"],"cards":[{"kind":"good","title":"Brush: Did you know?","text":"Brushing keeps a dog's coat clean and tangle-free, and it spreads natural oils that make fur shiny."},{"kind":"good","title":"ID tag: Did you know?","text":"A tag with your phone number helps a lost dog get home fast."},{"kind":"good","title":"Chew toy: Did you know?","text":"Chew toys give a dog something safe to chew. Pick one that is bigger than your dog's mouth, so it can't be swallowed."},{"kind":"good","title":"Poop bags: Did you know?","text":"Picking up after your dog keeps parks clean and healthy for everyone."}],"note":"One card per item, shown the first time that item is bought."}]},{"t":"action","title":"Tap “Add” on a want (Dog shampoo, Squeaky ball, Bandana, Bow, Sweater, Sparkly collar, Dog bed)","kids":[{"t":"outcome","tone":"neutral","title":"A want, with enough coins left for the needs","meter":"","lo":["LO5"],"dog":"The item goes in the basket. Wants are never wrong and give no points.","cards":[{"kind":"info","title":"Looking good!","text":"Style is fine if it is comfortable, fits well, and the dog can still see and move freely."}],"note":"The card is shown for the first want only."},{"t":"outcome","tone":"bad","title":"A want that would leave too little for the needs","meter":"−5","lo":["LO5"],"dog":"The item flies to the basket and straight back to the shelf. Nothing is charged.","cards":[{"kind":"bad","title":"Needs come first!","text":"If we buy that now, we won't have enough coins for everything on the list. Food, health and safety come before extras."}],"lines":[{"who":"Parent","text":"Needs first! Keep enough coins for everything on the list.","cls":"parent"}],"note":"The card is shown once. After that the parent says the short line instead."}]},{"t":"action","title":"Tap “Add” on a look-alike (Human toothpaste, Flea treatment (cat), Human shampoo, Tiny ball)","kids":[{"t":"outcome","tone":"bad","title":"The wrong item","meter":"−5","lo":["LO5","LO4"],"dog":"The item flies to the basket and straight back to the shelf. Nothing is charged.","cards":[{"kind":"bad","title":"Human toothpaste: Look at the label!","text":"Human toothpaste often has xylitol or fluoride, which are unsafe for dogs to swallow."},{"kind":"bad","title":"Flea treatment (cat): Look at the label!","text":"Flea products are made for one species. Always match the label."},{"kind":"bad","title":"Human shampoo: Look at the label!","text":"A dog's skin is different from ours, so use a shampoo made for dogs."},{"kind":"bad","title":"Tiny ball: Look at the label!","text":"Toys that are small enough to swallow can make a dog choke. Choose one that is bigger than its mouth."}],"lines":[{"who":"Parent","text":"Check the label first. That one isn't made for dogs.","cls":"parent"}],"note":"One card per item, shown once. After that the parent says the short line instead."}]},{"t":"action","title":"Tap “Add” on something that costs more than the coins left","kids":[{"t":"outcome","tone":"neutral","title":"Not enough coins","lines":[{"who":"Parent","text":"That's more than we have left. Put something back in the basket first.","cls":"parent"}],"lo":["LO5"],"note":"The card already warned “Not enough coins” in red."}]}]}]},{"t":"action","title":"Tap the basket","kids":[{"t":"decision","title":"Basket panel","sub":"Everything bought so far, and the total.","lo":["LO5"],"kids":[{"t":"action","title":"Tap an item in the basket","kids":[{"t":"outcome","tone":"neutral","title":"Put it back","dog":"The coins are refunded and the tick on the list is removed.","lo":["LO5"]}]},{"t":"action","title":"Tap “Keep shopping”","kids":[{"t":"outcome","tone":"neutral","title":"The panel closes"}]},{"t":"action","title":"Tap “Checkout”","kids":[{"t":"decision","title":"Checkout","lo":["LO5","LO4"],"kids":[{"t":"action","title":"Some needs are still not in the basket","kids":[{"t":"outcome","tone":"info","title":"Not yet","lines":[{"who":"Parent","text":"We're not done yet. Some things on the list still need a tick.","cls":"parent"}],"lo":["LO5"]}]},{"t":"action","title":"All nine needs are in the basket","kids":[{"t":"outcome","tone":"good","title":"The till: each item is explained, one by one","dog":"Each item appears on the counter and the parent says why it was bought. A tap moves on.","lo":["LO5","LO4"],"lines":[{"who":"Parent","text":"The dog toothbrush is for the yellow tartar the vet found on Biscuit's teeth.","cls":"parent"},{"who":"Parent","text":"Dog toothpaste goes with it. Human toothpaste is not safe for dogs to swallow.","cls":"parent"},{"who":"Parent","text":"The flea treatment is for the flea the vet found on Biscuit's coat.","cls":"parent"},{"who":"Parent","text":"The nail clippers are for Biscuit's long nails.","cls":"parent"},{"who":"Parent","text":"The ear cleaner is for the wax the vet saw in Biscuit's ears.","cls":"parent"},{"who":"Parent","text":"A brush keeps Biscuit's coat clean and tangle-free.","cls":"parent"},{"who":"Parent","text":"An ID tag helps Biscuit get home if they ever get lost.","cls":"parent"},{"who":"Parent","text":"Biscuit needs something safe to chew.","cls":"parent"},{"who":"Parent","text":"Poop bags keep parks clean and healthy for everyone.","cls":"parent"},{"who":"Parent","text":"A little extra for Biscuit, bought with the leftover coins.","cls":"parent"},{"who":"Parent","text":"That's everything on the list, and we stayed within our coins. Great shopping!","cls":"parent"}],"note":"The “a little extra” line is only said for wants in the basket. The meter then fills and the “Check-up Day” album page appears."}]}]}]}]}]},{"t":"action","title":"Put every need in the basket","kids":[{"t":"outcome","tone":"info","title":"Everything is on the list","lines":[{"who":"Parent","text":"That is everything on the list! Tap the basket to check out.","cls":"parent"}],"lo":["LO5"]}]},{"t":"action","title":"Do nothing for 25 seconds","kids":[{"t":"outcome","tone":"info","title":"Idle hint","lines":[{"who":"Parent (idle hint)","text":"Tap an item for its price. Use the arrows for more aisles, and the basket when you are done.","cls":"hint"}],"lo":["LO5"]}]}]}]},{"id":"rules","title":"Rules that apply everywhere: meter, hints, retry and pause","nav":"Meter, hints, retry","lo":["LO1","LO2","LO3","LO4","LO5"],"desc":"The happiness meter is a soft timer and the feedback: right actions raise it, wrong actions only nudge it down. Help fades as the levels go on. Running out of meter never ends the game: the task restarts with a hint.","roots":[{"t":"system","title":"Happiness meter","sub":"Starts each task at 80 of 100. Drains 0.25 per second in Level 1 and 0.35 per second in Level 2. It is paused while a card, a close-up, a choice or the pause menu is open, so reading never costs anything. Green above 60, yellow from 30 to 60, red below 30.","kids":[{"t":"action","title":"The meter reaches 0","kids":[{"t":"outcome","tone":"bad","title":"Retry screen","dog":"The scene greys out, the sad dog lies in a spotlight, the parent explains what was needed, and a Try again button restarts that task only.","lo":["LO1","LO2","LO4","LO5"],"lines":[{"who":"Parent","text":"Biscuit got too hungry and sad. Remember: only dog-safe food. Let's try again!","cls":"parent"},{"who":"Parent","text":"Biscuit needed help with potty time. Watch for sniffing and circling. Let's try again!","cls":"parent"},{"who":"Parent","text":"Biscuit got too nervous. Gentle pats keep a dog calm, and a check-up goes best when you take your time. Let's try again!","cls":"parent"},{"who":"Parent","text":"The shopping took too long, and Biscuit is waiting at home. Let's try again, and check the list first!","cls":"parent"}],"note":"In order: Snack Time, Potty Training, Help the Vet, Pet Store Run. A retry shows the hint straight away, and facts already seen are not shown again."}]},{"t":"action","title":"The player waits without progress","kids":[{"t":"outcome","tone":"info","title":"Idle hints","lo":["LO1","LO2","LO3","LO4","LO5"],"lines":[{"who":"Level 1, after 15 s (idle hint)","text":"Dogs need dog food or plain, simple foods. Sweets and some fruits are dangerous.","cls":"hint"},{"who":"Level 1, after 15 s (idle hint)","text":"Dogs like a quiet potty spot, away from where they eat and sleep.","cls":"hint"},{"who":"Level 1, after 15 s (idle hint)","text":"Keep holding the treat, and walk slowly so Biscuit keeps following it.","cls":"hint"},{"who":"Level 2, after 25 s (idle hint)","text":"Tap a glowing spot on Biscuit, or the label next to it. Teeth, coat, paws and ears all need a look.","cls":"hint"},{"who":"Level 2, after 25 s (idle hint)","text":"Tap an item for its price. Use the arrows for more aisles, and the basket when you are done.","cls":"hint"}],"note":"Level 1 shows pointer arrows on what matters. Level 2 has only one arrow, on the first spot at the vet. The hint timer restarts after every action and does not run while the meter is paused."}]},{"t":"action","title":"The player taps the pause button","kids":[{"t":"decision","title":"Pause menu","kids":[{"t":"action","title":"Resume","kids":[{"t":"outcome","tone":"neutral","title":"Back to the task","note":"Everything is frozen while paused, including the meter and timers."}]},{"t":"action","title":"Sound on or off","kids":[{"t":"outcome","tone":"neutral","title":"The sound is toggled"}]},{"t":"action","title":"Quit to title","kids":[{"t":"outcome","tone":"neutral","title":"Back to the title screen","note":"Progress in the current task is lost."}]}]}]}]}]}]}</script>
+<script>
+const D = JSON.parse(document.getElementById('data').textContent);
+const Q = new URLSearchParams(location.search), STATIC = Q.has('static');
+document.body.classList.toggle('static', STATIC);
+document.body.classList.toggle('print', Q.has('print'));
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const LOCLS = id => id === 'CTX' ? 'ctx' : id.toLowerCase();
+
+$('intro').textContent = D.intro;
+$('foot').textContent = D.foot;
+
+// ----- legend + LO chips
+const selected = new Set();
+D.los.forEach(lo => {
+  const c = el('button', 'chip'); c.type = 'button'; c.setAttribute('aria-pressed', 'false'); c.title = lo.text;
+  const i = el('i', LOCLS(lo.id), lo.id); c.append(i, document.createTextNode(lo.short));
+  c.addEventListener('click', () => { selected.has(lo.id) ? selected.delete(lo.id) : selected.add(lo.id); c.setAttribute('aria-pressed', selected.has(lo.id)); apply(); });
+  $('chips').append(c);
+});
+[['#F3E9FA', '#B39DD6', 'Scene or cutscene'], ['#FFE08A', '#E0B53F', 'Decision point'], ['#FFFDF7', '#5A3E36', 'Player action'],
+ ['#E4F4E8', '#6FA07E', 'Good outcome'], ['#FCE6E3', '#E8746A', 'Wrong outcome'], ['#E6F4FA', '#6FAFCB', 'Information / neutral'], ['#EEE6D8', '#8a6f66', 'Game rule (dashed)']]
+  .forEach(([bg, bd, t]) => { const s = el('span'); const sw = el('i', 'sw'); sw.style.background = bg; sw.style.borderColor = bd; s.append(sw, document.createTextNode(t)); $('legend').append(s); });
+const lg = el('span'); lg.append(document.createTextNode('Click a box with a + or – to open or close its branches.')); $('legend').append(lg);
+
+// ----- tree
+const KIND = { scene: 'Scene', decision: 'Decision', action: 'Player does', outcome: 'Result', system: 'Game rule' };
+const all = [];
+function annotate(n, parent) { n._parent = parent; n._los = new Set(n.lo || []); (n.kids || []).forEach(k => { annotate(k, n); k._los.forEach(l => n._los.add(l)); }); n._text = [n.title, n.sub, n.dog, n.note, ...(n.lines || []).map(l => l.text), ...(n.cards || []).map(c => c.title + ' ' + c.text)].join(' ').toLowerCase(); all.push(n); }
+
+function boxFor(n) {
+  const b = el('div', `box t-${n.t}${n.tone ? ' ' + n.tone : ''}`);
+  const hd = el('div', 'hd'); hd.append(el('span', 'kind', n.kind || KIND[n.t]), el('span', 'ttl', n.title));
+  if (n.meter) hd.append(el('span', 'meter ' + (n.meter.startsWith('+') ? 'up' : 'down'), n.meter + ' meter'));
+  b.append(hd);
+  if (n.sub) b.append(el('p', 'sub', n.sub));
+  if (n.dog) b.append(el('p', 'dog', n.dog));
+  (n.lines || []).forEach(l => { const d = el('div', 'say ' + (l.cls || l.who.toLowerCase())); d.append(el('b', null, l.who), document.createTextNode('“' + l.text + '”')); b.append(d); });
+  (n.cards || []).forEach(c => { const d = el('div', 'card ' + c.kind); d.append(el('b', null, c.title), document.createTextNode(c.text)); b.append(d); });
+  if (n.note) b.append(el('p', 'note', n.note));
+  if (n.lo && n.lo.length) { const los = el('div', 'los'); n.lo.forEach(id => los.append(el('span', 'lo ' + LOCLS(id), id))); b.append(los); }
+  n._box = b;
+  return b;
+}
+function build(n, depth) {
+  const node = el('div', 'node'); const b = boxFor(n); node.append(b); n._node = node;
+  if (n.kids && n.kids.length) {
+    b.classList.add('has-kids'); b.tabIndex = 0; b.setAttribute('role', 'button');
+    const kids = el('div', 'kids'); n.kids.forEach(k => { const kid = el('div', 'kid'); kid.append(build(k, depth + 1)); kids.append(kid); });
+    node.append(kids);
+    const toggle = () => { node.classList.toggle('closed'); b.setAttribute('aria-expanded', !node.classList.contains('closed')); };
+    b.setAttribute('aria-expanded', 'true');
+    b.addEventListener('click', toggle);
+    b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    if (!STATIC && depth >= 3) { node.classList.add('closed'); b.setAttribute('aria-expanded', 'false'); }
+  }
+  return node;
+}
+
+D.sections.forEach(s => {
+  const page = el('section', 'page'); page.id = s.id;
+  const hd = el('div', 'sec-hd'); hd.append(el('h2', null, s.title));
+  const los = el('div', 'los'); (s.lo || []).forEach(id => los.append(el('span', 'lo ' + LOCLS(id), id))); hd.append(los);
+  page.append(hd, el('p', 'desc', s.desc));
+  const sc = el('div', 'scroll');
+  if (s.flow) {
+    const fl = el('div', 'flow');
+    s.flow.forEach((st, i) => { const a = el('a', 'step'); a.href = '#' + st.go; a.append(el('span', 'num', String(i + 1)), el('b', null, st.title), el('small', null, st.sub)); const l = el('div', 'los'); (st.lo || []).forEach(id => l.append(el('span', 'lo ' + LOCLS(id), id))); a.append(l); fl.append(a); });
+    sc.append(fl);
+  } else { s.roots.forEach(r => { annotate(r, null); sc.append(build(r, 0)); }); }
+  page.append(sc);
+  if (s.id === 'overview') { $('p-top').append(page); $('p-top').append($('foot')); } else $('sections').append(page);
+  if (s.id !== 'overview') { const a = el('a', null, s.nav || s.title); a.href = '#' + s.id; $('nav').append(a); }
+});
+
+// ----- controls
+function setAll(open) { all.forEach(n => { if (n.kids && n.kids.length) { n._node.classList.toggle('closed', !open); n._box.setAttribute('aria-expanded', open); } }); }
+$('expand').addEventListener('click', () => setAll(true));
+$('collapse').addEventListener('click', () => { setAll(false); all.filter(n => !n._parent).forEach(n => { n._node.classList.remove('closed'); n._box.setAttribute('aria-expanded', 'true'); }); });
+function apply() {
+  const term = $('q').value.trim().toLowerCase(), filtering = selected.size > 0, searching = term.length > 1;
+  let shown = 0, match = 0;
+  all.forEach(n => {
+    const own = !filtering || (n.lo || []).some(l => selected.has(l));
+    const via = filtering && !own && [...n._los].some(l => selected.has(l));
+    const hit = !searching || n._text.includes(term);
+    const ok = own && hit;
+    n._box.classList.toggle('dim', (filtering || searching) && !ok && !(via && !searching));
+    n._box.classList.toggle('via', via && !searching);
+    n._box.classList.toggle('found', searching && ok);
+    if (ok) match++;
+    if (searching && ok) { for (let p = n._parent; p; p = p._parent) p._node.classList.remove('closed'); }
+  });
+  $('status').textContent = (filtering || searching) ? `${match} of ${all.length} boxes match` : `${all.length} boxes in ${D.sections.filter(s => s.roots).length} trees`;
+}
+$('q').addEventListener('input', apply);
+apply();
+
+// ----- static mode: report the size the PNG and PDF need
+if (STATIC) {
+  const finish = () => {
+    const pages = [...document.querySelectorAll('.page')];
+    const w = Math.max(...pages.map(p => Math.max(p.scrollWidth, ...[...p.querySelectorAll('.scroll')].map(s => s.scrollWidth + 80))));
+    const h = Math.max(...pages.map(p => Math.ceil(p.getBoundingClientRect().height)));
+    document.title = 'M:' + JSON.stringify({ w: Math.ceil(w), h, total: Math.ceil(document.documentElement.scrollHeight) });
+    if (Q.has('print')) {
+      const st = document.createElement('style');
+      st.textContent = `@page { size:${Math.ceil(w)}px ${h + 60}px; margin:0 } body.static.print .page { width:${Math.ceil(w)}px; }`;
+      document.head.append(st);
+    }
+  };
+  setTimeout(finish, 1500);      // (not document.fonts.ready: it can stall under headless virtual time)
+}
+</script>
+</body>
+</html>

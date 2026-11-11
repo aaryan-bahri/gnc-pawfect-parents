@@ -1,11 +1,13 @@
-// The puppy: one sprite (origin at the paws), coat-specific animations, and promise-based walking.
+// The dog (puppy or young dog): one sprite (origin at the paws), coat-specific animations, and promise-based walking.
 import { W, WORLD } from './ui.js';
 
 export class Dog {
-  constructor(scene, coat, x) {
+  // stage: 'puppy' or 'young'. y is where the paws stand (canvas px); the default is the living-room floor.
+  constructor(scene, coat, x, { stage = 'puppy', y = W(WORLD.groundY + 2) } = {}) {
     this.scene = scene;
     this.coat = coat;
-    this.sprite = scene.add.sprite(x, W(WORLD.groundY + 2), `puppy_${coat}_idle`).setOrigin(0.5, 1).setScale(2).setDepth(50);
+    this.stage = stage;
+    this.sprite = scene.add.sprite(x, y, `${stage}_${coat}_idle`).setOrigin(0.5, 1).setScale(2).setDepth(50);
     this.play('idle');
   }
 
@@ -13,7 +15,7 @@ export class Dog {
 
   play(anim) {
     if (anim === 'circle') this.sprite.setFlipX(false);   // the circle frames already turn both ways
-    this.sprite.play(`puppy_${this.coat}_${anim}`, true);
+    this.sprite.play(`${this.stage}_${this.coat}_${anim}`, true);
     return this;
   }
 

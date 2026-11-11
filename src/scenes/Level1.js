@@ -1,10 +1,10 @@
 // Level 1: First Day Home (GAME_DESIGN.md §7). Task 1 Snack Time, Task 2 Potty Training.
 // Each task attempt has a run id; a retry bumps it, so awaits from a cancelled attempt just stop (`if (!this.alive(run)) return`).
-import { GameScene } from '../view.js';
+import { LevelBase } from './LevelBase.js';
 import { HappinessMeter } from '../meter.js';
 import { LEVEL1, fill } from '../content.js';
 import { Dog } from '../dog.js';
-import { art, button, choice, cue, factCard, nine, text, touchable, wait, Hud, ParentDialog, Thought, W, WORLD, CURSOR } from '../ui.js';
+import { art, cue, nine, text, touchable, Hud, ParentDialog, Thought, W, WORLD, CURSOR } from '../ui.js';
 import { sfx } from '../sfx.js';
 import { load } from '../save.js';
 
@@ -12,12 +12,15 @@ const FLOOR = W(WORLD.groundY + 1);       // canvas y where floor props rest
 // The treat sits on the kitchen countertop (world y=101). The treat icon's bone ends 11px down its 16px frame.
 const TREAT = { x: W(296), y: W(101), originY: 11 / 16 };
 
-export class Level1 extends GameScene {
+export class Level1 extends LevelBase {
   constructor() { super('Level1'); }
 
   create() {
+    this.resetRun();
     const { name, coat } = load();
     this.f = s => fill(s, name);
+    this.cfg = LEVEL1;
+    this.level = 1;
     this.input.once('pointerdown', () => sfx.unlock());
     art(this, 0, 0, 'living_room');
     this.bowl = art(this, W(WORLD.spots.bowl), FLOOR, 'bowl_empty', 0.5, 1).setDepth(40);
@@ -27,61 +30,12 @@ export class Level1 extends GameScene {
     this.talk = new ParentDialog(this);
     this.thought = new Thought(this, this.dog.sprite);
     this.wrongs = 0;
-    this.run = 0;
-    this.temp = [];
     this.startTask('snack');
   }
 
-  update(_, dt) {
-    this.meter.update(dt);
-    this.hud.update(dt);
-    this.thought.update();
-    if (!this.menu) this.onFrame?.(dt);                 // per-frame task logic (puppy following the treat)
-    // compare scene-clock times (this.time.now), not the game-loop timestamp
-    if (this.hintText && !this.hintShown && !this.meter.paused && this.time.now - this.lastProgress > LEVEL1.hintAfterMs) {
-      this.hintShown = true;
-      this.talk.say(this.f(this.hintText));
-    }
-  }
-
-  // ---------------------------------------------------------------- plumbing
-  alive(run) { return run === this.run; }
-  own(o) { this.temp.push(o); return o; }
-  wait(ms) { return wait(this, ms); }
-  clickOn(obj) { return new Promise(r => obj.once('pointerup', r)); }
-  progress() { this.lastProgress = this.time.now; this.hintShown = false; }
-  setHint(t) { this.hintText = t; this.progress(); }
-
-  gain(n) {
-    this.meter.add(n);
-    if (n > 0) { sfx.play('chime'); this.hud.bump(); }
-    else { sfx.play('boop'); this.wrongs++; }
-  }
-
-  async card(kind, body, title) {
-    this.meter.pause();
-    await factCard(this, kind, this.f(body), title);
-    this.meter.resume();
-    this.progress();                                    // reading time doesn't count towards the idle hint
-  }
-
-  async ask(question, options) {
-    this.talk.say(this.f(question));
-    this.meter.pause();
-    const o = await choice(this, options);
-    this.meter.resume();
-    this.progress();
-    return o;
-  }
-
+  // Level 1 additionally hides the dog's thought bubble when a task is abandoned.
   cancel() {
-    this.run++;
-    this.onFrame = null;
-    this.time.removeAllEvents();
-    this.tweens.killAll();
-    this.temp.forEach(o => o.destroy());
-    this.temp = [];
-    this.dog.sprite.removeAllListeners('pointerup').disableInteractive();
+    super.cancel();
     this.thought.hide();
   }
 
@@ -102,9 +56,10 @@ export class Level1 extends GameScene {
     this.setHint(S.hint);
     this.talk.say(this.f(retry ? S.hint : S.intro));
     await this.dog.walkTo(W(205)); if (!this.alive(run)) return;
-    let swap = Math.random() < 0.5;
+    let swap = Math.random() < 0.5, missed = false;
 
     for (let r = 0; r < S.rounds.length;) {
+      if (r > 0 || missed) this.talk.say(this.f(missed ? S.again : S.next[r - 1]));   // a new prompt, never the old one
       this.dog.face(1).play('sit');
       this.thought.show('bowl');
       const c = WORLD.counter;
@@ -117,7 +72,7 @@ export class Level1 extends GameScene {
       sfx.play('page');
 
       const pick = await this.closeUp(S.rounds[r], swap); if (!this.alive(run)) return;
-      this.talk.show();
+      this.talk.hide();                                 // the instruction is done: don't leave it hanging while the dog eats
       this.progress();
       this.thought.hide();
       this.bowl.setTexture(`bowl_${pick.id}`);
@@ -132,7 +87,7 @@ export class Level1 extends GameScene {
         this.dog.play('wag'); sfx.play('wag');
         this.gain(20);
         await this.card('good', pick.fact); if (!this.alive(run)) return;
-        r++;
+        r++; missed = false;
       } else {
         this.dog.play('refuse');
         this.thought.show('tummy');
@@ -141,7 +96,7 @@ export class Level1 extends GameScene {
         await this.card('bad', pick.fact); if (!this.alive(run)) return;
         this.talk.say(this.f(S.wrongParent));
         await this.toCupboard(); if (!this.alive(run)) return;
-        swap = !swap;                                   // same pair again, positions swapped
+        swap = !swap; missed = true;                                   // same pair again, positions swapped
       }
       await this.dog.walkTo(W(205)); if (!this.alive(run)) return;
     }
@@ -224,7 +179,8 @@ export class Level1 extends GameScene {
 
       if (result === 'rewarded') {
         this.gain(20);
-        await this.card('good', P.reward.fact, P.reward.title); if (!this.alive(run)) return;
+        if (!await this.card('good', P.reward.fact, P.reward.title)) this.talk.say(this.f(P.reward.again));   // the lesson once, then a short line
+        if (!this.alive(run)) return;
         wins++;
       } else {
         this.dog.face(1).play('pee');
@@ -238,7 +194,7 @@ export class Level1 extends GameScene {
         this.tweens.add({ targets: puddle, alpha: 0, duration: 400 });
       }
       this.dog.play('idle');
-      if (wins < P.successesNeeded) this.talk.say(this.f(P.introLead));
+      if (wins < P.successesNeeded) this.talk.hide();   // no old instruction while the puppy wanders
     }
 
     this.talk.say(this.f(P.done));
@@ -256,6 +212,8 @@ export class Level1 extends GameScene {
       let state = 'wait', dragging = false;             // wait -> lead -> pee -> reward -> done
       dog.play('sniff');
       this.thought.show('droplet');
+      this.talk.say(this.f(this.cueSeen ? P.cueAgain : P.cue));   // explain the signs when they happen, not only after an idle wait
+      this.cueSeen = true;
       this.time.delayedCall(900, () => { if (state === 'wait') dog.play('circle'); });
       const arrow = this.own(cue(this, TREAT.x, TREAT.y - 50));
       const treat = this.own(touchable(art(this, TREAT.x, TREAT.y, 'icon_treat', 0.5, TREAT.originY).setDepth(130),
@@ -326,59 +284,5 @@ export class Level1 extends GameScene {
     const h = this.own(art(this, d.x, d.sprite.y - 70, 'icon_heart', 0.5, 0.5).setDepth(140));
     this.tweens.add({ targets: h, y: h.y - 36, alpha: 0, duration: 900, onComplete: () => h.destroy() });
     await this.wait(700);
-  }
-
-  // ---------------------------------------------------------------- end, fail, pause
-  async complete(run) {
-    this.meter.add(100);
-    this.meter.pause();
-    this.hintText = null;
-    sfx.play('win');
-    await this.wait(1600); if (!this.alive(run)) return;
-    this.scene.start('LevelComplete', { wrongs: this.wrongs });
-  }
-
-  fail() {
-    this.cancel();
-    this.hintText = null;
-    sfx.play('boop');
-    this.own(this.add.rectangle(0, 0, 640, 360, 0x3E2A24, 0.55).setOrigin(0).setDepth(250).setInteractive());
-    this.own(art(this, this.dog.x, FLOOR + 6, 'spotlight', 0.5, 1).setDepth(251));
-    this.dog.sprite.setDepth(252).setFlipX(false);
-    this.dog.play('sad');
-    this.talk.setDepth(260);
-    this.talk.say(this.f(LEVEL1.retry[this.task]));
-    this.own(button(this, 256, 160, 128, 32, 'Try again', () => {
-      this.dog.sprite.setDepth(50);
-      this.talk.setDepth(150);
-      this.startTask(this.task, true);
-    }, { size: 18 }).setDepth(261));
-  }
-
-  pause() {
-    if (this.menu) return;
-    this.meter.pause();
-    this.tweens.pauseAll();
-    this.time.paused = true;
-    this.anims.pauseAll();
-    const m = this.menu = this.add.container(0, 0).setDepth(400);
-    m.add(this.add.rectangle(0, 0, 640, 360, 0x3E2A24, 0.5).setOrigin(0).setInteractive());
-    m.add(nine(this, 220, 84, 'card_info', 200, 192, 6));
-    m.add(text(this, 320, 100, 'Paused', 20, { bold: true }).setOrigin(0.5, 0));
-    m.add(button(this, 250, 136, 140, 32, 'Resume', () => this.unpause()));
-    const sound = button(this, 250, 178, 140, 32, sfx.muted ? 'Sound: off' : 'Sound: on', () => {
-      sound.list.find(o => o.type === 'Text').setText(sfx.toggle() ? 'Sound: off' : 'Sound: on');
-    }, { kind: 'cream' });
-    m.add(sound);
-    m.add(button(this, 250, 220, 140, 32, 'Quit to title', () => { this.unpause(); this.scene.start('Title'); }, { kind: 'cream', size: 15 }));
-  }
-
-  unpause() {
-    this.menu.destroy();
-    this.menu = null;
-    this.meter.resume();
-    this.tweens.resumeAll();
-    this.time.paused = false;
-    this.anims.resumeAll();
   }
 }

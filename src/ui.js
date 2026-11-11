@@ -8,6 +8,8 @@ export const PUPPY_ANIMS = ['idle', 'walk', 'sit', 'wag', 'sniff', 'circle', 'pe
 // Room landmarks in world pixels (320x180). Keep in sync with tools/sprites.py.
 export const WORLD = { floorY: 140, groundY: 165, spots: { door: 36, middle: 170, bowl: 246 }, counterSlots: [110, 210], counterTopY: 134,
   counter: { x: 223, y: 20, w: 93, h: 117 } };
+// The vet clinic in world pixels. Keep in sync with CLINIC in tools/sprites.py.
+export const CLINIC = { tableTop: 124, dogX: 146, dogFeet: 122, vetX: 252, vetFeet: 168 };
 export const W = n => n * 2;                      // world pixels -> canvas pixels
 export const INK = '#5A3E36';
 export const CURSOR = 'url(assets/ui/cursor_paw.png) 14 6, pointer';
@@ -93,27 +95,33 @@ export function choice(scene, options) {
 }
 
 // Parent portrait (top-left) + speech bubble that grows to fit the line.
+// `who` picks the portrait: 'parent' or 'vet' (sprites <who>_idle / <who>_talk).
 export class ParentDialog {
-  constructor(scene) {
+  constructor(scene, who = 'parent') {
     this.scene = scene;
+    this.who = who;
     this.c = scene.add.container(0, 0).setDepth(150).setVisible(false);
     this.c.add(nine(scene, 2, 40, 'card_info', 104, 100, 6));
-    this.face = scene.add.sprite(6, 42, 'parent_idle').setOrigin(0).setScale(2).play('parent_idle');
+    this.face = scene.add.sprite(6, 42, `${who}_idle`).setOrigin(0).setScale(2).play(`${who}_idle`);
     this.bubble = nine(scene, 116, 58, 'bubble_speech', 420, 60, 5);
     this.tail = art(scene, 100, 78, 'bubble_speech_tail');
     this.t = text(scene, 134, 70, '', 16, { wrap: 390 });
     this.c.add([this.face, this.bubble, this.tail, this.t]);
   }
-  say(line) {
+  // `readMs`: hide the bubble again after that long (for tips shown over something the player needs to see).
+  say(line, readMs = 0) {
+    this.hideTimer?.remove();
     this.t.setText(line);
     const h = Math.max(60, Math.ceil((this.t.height + 24) / 2) * 2);
     this.bubble.setSize(210, h / 2);
     this.c.setVisible(true);
-    this.face.play('parent_talk');
+    this.face.play(`${this.who}_talk`);
     this.talkTimer?.remove();
-    this.talkTimer = this.scene.time.delayedCall(Math.min(2400, 300 + line.length * 30), () => this.face.play('parent_idle'));
+    this.talkTimer = this.scene.time.delayedCall(Math.min(2400, 300 + line.length * 30), () => this.face.play(`${this.who}_idle`));
+    if (readMs) this.hideTimer = this.scene.time.delayedCall(readMs, () => this.hide());
   }
-  hide() { this.c.setVisible(false); }
+  setWho(who) { if (who !== this.who) { this.who = who; this.face.play(`${who}_idle`); } }
+  hide() { this.hideTimer?.remove(); this.c.setVisible(false); }
   show() { this.c.setVisible(true); }
   setDepth(d) { this.c.setDepth(d); }
 }
@@ -163,4 +171,38 @@ export class Hud {
     this.heart.setAlpha(this.meter.state === 'red' ? 0.55 + 0.45 * Math.abs(Math.sin(this.scene.time.now / 220)) : 1);
   }
   bump() { this.scene.tweens.add({ targets: this.heart, y: 14, duration: 110, yoyo: true }); }
+}
+
+// The shopping list as a sheet of paper (asset group 6): a top, one ruled line per item written, and a bottom. It grows as
+// items are added, with one blank line ready. `labels` maps item id -> text. Lives at canvas (x, y).
+export class ShoppingList {
+  constructor(scene, x, y, capacity, labels) {
+    this.scene = scene; this.labels = labels; this.cap = capacity; this.entries = {}; this.n = 0;
+    this.c = scene.add.container(x, y).setDepth(120);
+    this.c.add([art(scene, 0, 0, 'paper_top'), text(scene, 28, 14, 'Shopping list', 14)]);
+    this.bottom = art(scene, 0, 0, 'paper_bottom');
+    this.c.add(this.bottom);
+    this.rows = 0;
+    this.openRow();
+  }
+  rowY(i) { return 36 + i * 20; }
+  openRow() {
+    if (this.rows >= this.cap) return;
+    this.c.add(art(this.scene, 0, this.rowY(this.rows), 'paper_row'));
+    this.rows++;
+    this.bottom.y = this.rowY(this.rows);
+  }
+  // Canvas position of the next line to be written (where a flying icon should land).
+  nextPos() { return { x: this.c.x + 40, y: this.c.y + this.rowY(this.n) + 10 }; }
+  add(id) {
+    const y = this.rowY(this.n++);
+    const box = art(this.scene, 26, y + 3, 'list_box');
+    const label = text(this.scene, 46, y + 3, this.labels[id], 13);
+    this.c.add([box, label]);
+    this.entries[id] = { box };
+    this.scene.tweens.add({ targets: [box, label], alpha: { from: 0, to: 1 }, duration: 250 });
+    this.openRow();
+  }
+  tick(id, on = true) { this.entries[id].box.setTexture(on ? 'list_tick' : 'list_box'); }
+  destroy() { this.c.destroy(); }
 }

@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pawfect Parents: Player Decision Tree</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;600&display=swap">
+<style>
+:root {
+  --paper:#FFF4E0; --card:#FFFDF7; --ink:#5A3E36; --dim:#8a6f66; --line:#C9A27F; --soft:#F3E4CB;
+  --lav:#D7C4EC; --lav-d:#B39DD6; --butter:#FFE08A; --butter-d:#E0B53F; --mint:#B8E0C2; --mint-d:#6FA07E;
+  --coral:#F9D5D1; --coral-d:#E8746A; --sky:#BFE3F2; --sky-d:#6FAFCB;
+  --lo1:#E8746A; --lo2:#F2C55C; --lo3:#8DBF9A; --lo4:#8FC3DB; --lo5:#B39DD6; --ctx:#B9855A;
+  --display:"Pixelify Sans",ui-monospace,Consolas,monospace; --body:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  color-scheme:light;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--paper); color:var(--ink); font:14px/1.45 var(--body); }
+.wrap { padding:0 max(20px, env(safe-area-inset-left, 0px)) 60px; max-width:none; }
+h1,h2 { font-family:var(--display); font-weight:600; margin:0; text-wrap:balance; }
+h1 { font-size:34px; line-height:1.1; }
+h2 { font-size:24px; }
+a { color:inherit; }
+
+/* ---------- header + controls */
+.top { padding:28px 0 8px; }
+.top p { max-width:80ch; margin:8px 0 0; color:var(--dim); }
+.bar { position:sticky; top:0; z-index:20; background:var(--paper); border-bottom:2px solid var(--ink); padding:10px 0; margin:14px 0 0; display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+.bar b { font-family:var(--display); font-weight:600; }
+.group { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+button, input { font:inherit; color:inherit; }
+.btn { background:var(--card); border:2px solid var(--ink); padding:4px 10px; cursor:pointer; box-shadow:2px 2px 0 var(--ink); }
+.btn:hover { background:var(--butter); }
+.btn:focus-visible, .box:focus-visible, .chip:focus-visible, .nav a:focus-visible { outline:3px solid var(--coral-d); outline-offset:2px; }
+input[type=search] { background:var(--card); border:2px solid var(--ink); padding:4px 8px; width:210px; }
+.chip { border:2px solid var(--ink); background:var(--card); padding:2px 9px; cursor:pointer; display:inline-flex; gap:6px; align-items:center; }
+.chip i, .lo { font-style:normal; font-weight:700; font-size:11px; letter-spacing:.04em; padding:1px 6px; border:1.5px solid var(--ink); }
+.chip[aria-pressed=true] { background:var(--butter); box-shadow:2px 2px 0 var(--ink); }
+.lo1 { background:var(--lo1); } .lo2 { background:var(--lo2); } .lo3 { background:var(--lo3); } .lo4 { background:var(--lo4); } .lo5 { background:var(--lo5); } .ctx { background:#E8CFB5; }
+.nav { display:flex; flex-wrap:wrap; gap:4px 14px; padding:8px 0 0; font-size:13px; }
+.status { color:var(--dim); font-size:13px; margin-left:auto; }
+.legend { display:flex; flex-wrap:wrap; gap:6px 16px; padding:12px 0 0; font-size:12.5px; color:var(--dim); }
+.legend span { display:inline-flex; align-items:center; gap:6px; }
+.sw { width:16px; height:12px; border:2px solid var(--ink); display:inline-block; }
+
+/* ---------- sections */
+.page { padding:28px 0 8px; }
+.sec-hd { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:baseline; margin-bottom:6px; }
+.sec-hd .los { display:flex; gap:6px; }
+.desc { max-width:100ch; color:var(--dim); margin:0 0 14px; }
+.scroll { overflow-x:auto; padding:6px 4px 18px; }
+.flow { display:flex; flex-wrap:wrap; align-items:stretch; gap:10px 0; }
+.step { width:250px; background:var(--lav); border:2px solid var(--lav-d); padding:8px 10px; position:relative; margin-right:34px; text-decoration:none; }
+.step:hover { background:#E6D8F4; }
+.step .num { position:absolute; left:-2px; top:-2px; background:var(--ink); color:var(--paper); font:700 12px/1 var(--display); padding:4px 7px; }
+.step b { padding-left:24px; }
+.step b { display:block; }
+.step small { color:var(--dim); display:block; margin:2px 0 4px; }
+
+/* ---------- the tree: left to right, each node's children stacked to its right */
+.node { display:flex; align-items:center; }
+.kids { display:flex; flex-direction:column; position:relative; }
+.kids::before { content:""; position:absolute; left:0; top:50%; width:24px; border-top:2px solid var(--line); }
+.kid { position:relative; padding:6px 0 6px 48px; }
+.kid::before { content:""; position:absolute; left:24px; top:50%; width:24px; border-top:2px solid var(--line); }
+.kid::after { content:""; position:absolute; left:24px; top:0; bottom:0; border-left:2px solid var(--line); }
+.kid:first-child::after { top:50%; } .kid:last-child::after { bottom:50%; } .kid:only-child::after { display:none; }
+.node.closed > .kids { display:none; }
+
+.box { position:relative; border:2px solid var(--ink); background:var(--card); padding:8px 11px 9px; width:260px; box-shadow:3px 3px 0 rgba(90,62,54,.25); }
+.box.has-kids { cursor:pointer; }
+.box.has-kids::after { content:"–"; position:absolute; right:-11px; top:50%; margin-top:-10px; width:20px; height:20px; border:2px solid var(--ink); background:var(--card); border-radius:50%; font:700 14px/16px var(--body); text-align:center; z-index:2; }
+.node.closed > .box.has-kids::after { content:"+"; background:var(--butter); }
+.t-scene { width:330px; background:var(--lav); border-color:var(--lav-d); }
+.t-decision { width:310px; background:var(--butter); border-color:var(--butter-d); }
+.t-action { width:236px; background:var(--card); }
+.t-outcome { width:390px; }
+.t-outcome.good { background:#E4F4E8; border-color:var(--mint-d); }
+.t-outcome.bad { background:#FCE6E3; border-color:var(--coral-d); }
+.t-outcome.info { background:#E6F4FA; border-color:var(--sky-d); }
+.t-outcome.neutral { background:#F6EEE0; border-color:var(--line); }
+.t-system { width:330px; background:#EEE6D8; border-color:var(--dim); border-style:dashed; }
+.hd { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.kind { font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
+.ttl { font-weight:700; font-size:14px; }
+.meter { margin-left:auto; font-weight:700; font-size:12px; padding:0 7px; border:2px solid var(--ink); background:var(--card); font-variant-numeric:tabular-nums; }
+.meter.up { background:var(--mint); } .meter.down { background:var(--coral); }
+.sub { margin:3px 0 0; font-size:12.5px; color:var(--dim); }
+.dog { margin:5px 0 0; font-size:12.5px; font-style:italic; }
+.say { margin:6px 0 0; font-size:13px; padding-left:8px; border-left:4px solid var(--line); }
+.say b { font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; display:block; color:var(--dim); }
+.say.parent { border-color:var(--coral-d); } .say.vet { border-color:var(--sky-d); } .say.hint { border-color:var(--butter-d); } .say.sys { border-color:var(--dim); }
+.card { margin:7px 0 0; padding:5px 8px; font-size:12.5px; border:2px solid var(--ink); background:var(--card); }
+.card b { display:block; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; }
+.card.good { border-color:var(--mint-d); } .card.good b { color:#3F7B52; }
+.card.bad { border-color:var(--coral-d); } .card.bad b { color:#B6453D; }
+.card.info { border-color:var(--sky-d); } .card.info b { color:#2F7A9B; }
+.note { margin:6px 0 0; font-size:12px; color:var(--dim); }
+.los { display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; }
+
+/* filtering */
+.box.dim { opacity:.22; }
+.box.via { opacity:.62; }
+.box.found { outline:3px solid var(--coral-d); outline-offset:1px; }
+
+/* ---------- static render (PNG / PDF) */
+body.static { width:max-content; min-width:100%; }
+body.static .bar, body.static .nav, body.static .btn { display:none; }
+body.static .scroll { overflow:visible; }
+body.static .box { box-shadow:none; }
+body.static .page { padding-left:40px; padding-right:40px; }
+body.static.print .page { break-after:page; break-inside:avoid; }
+body.static.print .page:last-child, body.static.print .page .page { break-after:auto; }   /* the overview sits inside the title page */
+.foot { color:var(--dim); font-size:12.5px; padding:24px 0 0; max-width:110ch; }
+@media (max-width:700px) { .bar { position:static; } input[type=search] { width:100%; } }
+@media (prefers-reduced-motion:no-preference) { .box { transition:opacity .15s; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="root">
+  <div class="page" id="p-top">
+    <header class="top">
+      <h1>Pawfect Parents: player decision tree</h1>
+      <p id="intro"></p>
+    </header>
+    <div class="bar" id="bar">
+      <div class="group"><button class="btn" id="expand">Expand all</button><button class="btn" id="collapse">Collapse all</button></div>
+      <div class="group"><b>Show learning objective:</b><span id="chips"></span></div>
+      <div class="group"><input id="q" type="search" placeholder="Search the dialogue" aria-label="Search the dialogue"></div>
+      <div class="status" id="status" role="status"></div>
+    </div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div id="sections"></div>
+</div>
+<p class="foot" id="foot"></p>
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+const D = JSON.parse(document.getElementById('data').textContent);
+const Q = new URLSearchParams(location.search), STATIC = Q.has('static');
+document.body.classList.toggle('static', STATIC);
+document.body.classList.toggle('print', Q.has('print'));
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const LOCLS = id => id === 'CTX' ? 'ctx' : id.toLowerCase();
+
+$('intro').textContent = D.intro;
+$('foot').textContent = D.foot;
+
+// ----- legend + LO chips
+const selected = new Set();
+D.los.forEach(lo => {
+  const c = el('button', 'chip'); c.type = 'button'; c.setAttribute('aria-pressed', 'false'); c.title = lo.text;
+  const i = el('i', LOCLS(lo.id), lo.id); c.append(i, document.createTextNode(lo.short));
+  c.addEventListener('click', () => { selected.has(lo.id) ? selected.delete(lo.id) : selected.add(lo.id); c.setAttribute('aria-pressed', selected.has(lo.id)); apply(); });
+  $('chips').append(c);
+});
+[['#F3E9FA', '#B39DD6', 'Scene or cutscene'], ['#FFE08A', '#E0B53F', 'Decision point'], ['#FFFDF7', '#5A3E36', 'Player action'],
+ ['#E4F4E8', '#6FA07E', 'Good outcome'], ['#FCE6E3', '#E8746A', 'Wrong outcome'], ['#E6F4FA', '#6FAFCB', 'Information / neutral'], ['#EEE6D8', '#8a6f66', 'Game rule (dashed)']]
+  .forEach(([bg, bd, t]) => { const s = el('span'); const sw = el('i', 'sw'); sw.style.background = bg; sw.style.borderColor = bd; s.append(sw, document.createTextNode(t)); $('legend').append(s); });
+const lg = el('span'); lg.append(document.createTextNode('Click a box with a + or – to open or close its branches.')); $('legend').append(lg);
+
+// ----- tree
+const KIND = { scene: 'Scene', decision: 'Decision', action: 'Player does', outcome: 'Result', system: 'Game rule' };
+const all = [];
+function annotate(n, parent) { n._parent = parent; n._los = new Set(n.lo || []); (n.kids || []).forEach(k => { annotate(k, n); k._los.forEach(l => n._los.add(l)); }); n._text = [n.title, n.sub, n.dog, n.note, ...(n.lines || []).map(l => l.text), ...(n.cards || []).map(c => c.title + ' ' + c.text)].join(' ').toLowerCase(); all.push(n); }
+
+function boxFor(n) {
+  const b = el('div', `box t-${n.t}${n.tone ? ' ' + n.tone : ''}`);
+  const hd = el('div', 'hd'); hd.append(el('span', 'kind', n.kind || KIND[n.t]), el('span', 'ttl', n.title));
+  if (n.meter) hd.append(el('span', 'meter ' + (n.meter.startsWith('+') ? 'up' : 'down'), n.meter + ' meter'));
+  b.append(hd);
+  if (n.sub) b.append(el('p', 'sub', n.sub));
+  if (n.dog) b.append(el('p', 'dog', n.dog));
+  (n.lines || []).forEach(l => { const d = el('div', 'say ' + (l.cls || l.who.toLowerCase())); d.append(el('b', null, l.who), document.createTextNode('“' + l.text + '”')); b.append(d); });
+  (n.cards || []).forEach(c => { const d = el('div', 'card ' + c.kind); d.append(el('b', null, c.title), document.createTextNode(c.text)); b.append(d); });
+  if (n.note) b.append(el('p', 'note', n.note));
+  if (n.lo && n.lo.length) { const los = el('div', 'los'); n.lo.forEach(id => los.append(el('span', 'lo ' + LOCLS(id), id))); b.append(los); }
+  n._box = b;
+  return b;
+}
+function build(n, depth) {
+  const node = el('div', 'node'); const b = boxFor(n); node.append(b); n._node = node;
+  if (n.kids && n.kids.length) {
+    b.classList.add('has-kids'); b.tabIndex = 0; b.setAttribute('role', 'button');
+    const kids = el('div', 'kids'); n.kids.forEach(k => { const kid = el('div', 'kid'); kid.append(build(k, depth + 1)); kids.append(kid); });
+    node.append(kids);
+    const toggle = () => { node.classList.toggle('closed'); b.setAttribute('aria-expanded', !node.classList.contains('closed')); };
+    b.setAttribute('aria-expanded', 'true');
+    b.addEventListener('click', toggle);
+    b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    if (!STATIC && depth >= 3) { node.classList.add('closed'); b.setAttribute('aria-expanded', 'false'); }
+  }
+  return node;
+}
+
+D.sections.forEach(s => {
+  const page = el('section', 'page'); page.id = s.id;
+  const hd = el('div', 'sec-hd'); hd.append(el('h2', null, s.title));
+  const los = el('div', 'los'); (s.lo || []).forEach(id => los.append(el('span', 'lo ' + LOCLS(id), id))); hd.append(los);
+  page.append(hd, el('p', 'desc', s.desc));
+  const sc = el('div', 'scroll');
+  if (s.flow) {
+    const fl = el('div', 'flow');
+    s.flow.forEach((st, i) => { const a = el('a', 'step'); a.href = '#' + st.go; a.append(el('span', 'num', String(i + 1)), el('b', null, st.title), el('small', null, st.sub)); const l = el('div', 'los'); (st.lo || []).forEach(id => l.append(el('span', 'lo ' + LOCLS(id), id))); a.append(l); fl.append(a); });
+    sc.append(fl);
+  } else { s.roots.forEach(r => { annotate(r, null); sc.append(build(r, 0)); }); }
+  page.append(sc);
+  if (s.id === 'overview') { $('p-top').append(page); $('p-top').append($('foot')); } else $('sections').append(page);
+  if (s.id !== 'overview') { const a = el('a', null, s.nav || s.title); a.href = '#' + s.id; $('nav').append(a); }
+});
+
+// ----- controls
+function setAll(open) { all.forEach(n => { if (n.kids && n.kids.length) { n._node.classList.toggle('closed', !open); n._box.setAttribute('aria-expanded', open); } }); }
+$('expand').addEventListener('click', () => setAll(true));
+$('collapse').addEventListener('click', () => { setAll(false); all.filter(n => !n._parent).forEach(n => { n._node.classList.remove('closed'); n._box.setAttribute('aria-expanded', 'true'); }); });
+function apply() {
+  const term = $('q').value.trim().toLowerCase(), filtering = selected.size > 0, searching = term.length > 1;
+  let shown = 0, match = 0;
+  all.forEach(n => {
+    const own = !filtering || (n.lo || []).some(l => selected.has(l));
+    const via = filtering && !own && [...n._los].some(l => selected.has(l));
+    const hit = !searching || n._text.includes(term);
+    const ok = own && hit;
+    n._box.classList.toggle('dim', (filtering || searching) && !ok && !(via && !searching));
+    n._box.classList.toggle('via', via && !searching);
+    n._box.classList.toggle('found', searching && ok);
+    if (ok) match++;
+    if (searching && ok) { for (let p = n._parent; p; p = p._parent) p._node.classList.remove('closed'); }
+  });
+  $('status').textContent = (filtering || searching) ? `${match} of ${all.length} boxes match` : `${all.length} boxes in ${D.sections.filter(s => s.roots).length} trees`;
+}
+$('q').addEventListener('input', apply);
+apply();
+
+// ----- static mode: report the size the PNG and PDF need
+if (STATIC) {
+  const finish = () => {
+    const pages = [...document.querySelectorAll('.page')];
+    const w = Math.max(...pages.map(p => Math.max(p.scrollWidth, ...[...p.querySelectorAll('.scroll')].map(s => s.scrollWidth + 80))));
+    const h = Math.max(...pages.map(p => Math.ceil(p.getBoundingClientRect().height)));
+    document.title = 'M:' + JSON.stringify({ w: Math.ceil(w), h, total: Math.ceil(document.documentElement.scrollHeight) });
+    if (Q.has('print')) {
+      const st = document.createElement('style');
+      st.textContent = `@page { size:${Math.ceil(w)}px ${h + 60}px; margin:0 } body.static.print .page { width:${Math.ceil(w)}px; }`;
+      document.head.append(st);
+    }
+  };
+  setTimeout(finish, 1500);      // (not document.fonts.ready: it can stall under headless virtual time)
+}
+</script>
+</body>
+</html>

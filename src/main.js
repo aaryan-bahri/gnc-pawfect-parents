@@ -3,6 +3,7 @@ import { Title } from './scenes/Title.js';
 import { DogSetup } from './scenes/DogSetup.js';
 import { Cutscene } from './scenes/Cutscene.js';
 import { Level1 } from './scenes/Level1.js';
+import { Level2 } from './scenes/Level2.js';
 import { LevelComplete } from './scenes/LevelComplete.js';
 import { view, refit, WORLD_W, WORLD_H } from './view.js';
 import { sfx } from './sfx.js';
@@ -22,10 +23,21 @@ const game = new Phaser.Game({
   pixelArt: true,
   backgroundColor: '#FFF4E0',
   scale: { mode: Phaser.Scale.NONE, zoom: 1 / view.dpr },
-  scene: [Boot, Preload, Title, DogSetup, Cutscene, Level1, LevelComplete],
+  scene: [Boot, Preload, Title, DogSetup, Cutscene, Level1, LevelComplete, Level2],
 });
-addEventListener('resize', () => refit(game));
-addEventListener('orientationchange', () => setTimeout(() => refit(game), 250));
+// A phone held upright gets a "turn your phone" screen, and the game loop sleeps until it is turned.
+const rotate = document.getElementById('rotate'), coarse = matchMedia('(pointer: coarse)');
+let asleep = false;
+function checkRotate() {
+  const portrait = coarse.matches && innerHeight > innerWidth;
+  rotate.hidden = !portrait;
+  if (portrait === asleep) return;
+  asleep = portrait;
+  if (portrait) game.loop.sleep(); else game.loop.wake();
+}
+addEventListener('resize', () => { refit(game); checkRotate(); });
+addEventListener('orientationchange', () => setTimeout(() => { refit(game); checkRotate(); }, 250));
+checkRotate();
 
 // Phones only start audio from a real tap, and a long-press must not open a context menu.
 for (const e of ['pointerup', 'touchend', 'click', 'keydown']) addEventListener(e, () => sfx.unlock(), { passive: true });

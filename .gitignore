@@ -5,6 +5,9 @@ GAME_DESIGN.md
 # Generated approval previews (rebuilt with: python tools/sprites.py --group N)
 tools/preview/
 
+# Generated knowledge graph (graphify)
+graphify-out/
+
 # Python / Node
 __pycache__/
 *.pyc

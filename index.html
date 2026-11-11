@@ -18,10 +18,23 @@
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
   }
   #game canvas { display: block; image-rendering: pixelated; }
+  /* Shown over the game on a phone held upright (main.js), which also pauses the game loop. */
+  #rotate { position: fixed; inset: 0; z-index: 10; background: #FFF4E0; color: #5A3E36; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 24px;
+    font-family: "Pixelify Sans", monospace; }
+  #rotate[hidden] { display: none; }
+  #rotate img { width: 208px; image-rendering: pixelated; }          /* 52px art at 4x */
+  #rotate b { font-size: 22px; font-weight: 600; }
+  #rotate span { font-size: 14px; color: #8a6f66; }
 </style>
 </head>
 <body>
 <div id="game"></div>
+<div id="rotate" hidden>
+  <img src="assets/ui/icon_rotate.png" alt="">
+  <b>Turn your phone sideways to play!</b>
+  <span>Pawfect Parents is made for wide screens.</span>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js"></script>
 <script type="module" src="src/main.js"></script>
 </body>

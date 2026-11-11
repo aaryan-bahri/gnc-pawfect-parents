@@ -9,7 +9,7 @@
 <div id="out">running...</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js"></script>
 <script type="module">
-import { LEVEL1, CUTSCENES, fill } from '../src/content.js';
+import { LEVEL1, LEVEL2, CUTSCENES, fill } from '../src/content.js';
 import { CARD, cardLayout, bodyWrapWidth } from '../src/layout.js';
 
 const NAME = 'Marshmallo';   // longest allowed name (10 chars)
@@ -23,7 +23,7 @@ const facts = [], speech = [];
     if (typeof v === 'string') (k === 'fact' || k === 'tip' ? facts : speech).push(fill(v, NAME));
     else if (v && typeof v === 'object') walk(v);
   }
-})({ LEVEL1, CUTSCENES });
+})({ LEVEL1, LEVEL2, CUTSCENES });
 const speechLines = speech.filter(s => s.length > 12);   // skip ids / labels
 
 await document.fonts.load('14px "Pixelify Sans"');

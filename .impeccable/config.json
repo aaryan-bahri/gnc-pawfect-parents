@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "tools/decision_tree/template.html"
+        ],
+        "createdAt": "2026-11-04T17:53:11.354Z",
+        "reason": "assistant decision, not user-confirmed: #FFF4E0 is the project's documented Cream (GAME_DESIGN.md 4.2) and the tree deliberately matches the game's visual identity"
+      }
+    ]
+  }
+}
