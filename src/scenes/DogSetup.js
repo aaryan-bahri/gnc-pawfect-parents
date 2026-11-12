@@ -12,6 +12,8 @@ const NAME_X = 124;                                     // where the typed name 
 export class DogSetup extends GameScene {
   constructor() { super('DogSetup'); }
 
+  init(data) { super.init(); this.next = data?.next; }
+
   create() {
     const saved = load();
     this.coat = saved.coat;
@@ -93,8 +95,9 @@ export class DogSetup extends GameScene {
 
   adopt() {
     const name = this.name.trim() || Phaser.Utils.Array.GetRandom(DOG_NAMES);
-    save({ name, coat: this.coat });
+    save({ name, coat: this.coat, adopted: true });
     sfx.play('bark');
-    this.scene.start('Cutscene', { key: 'opening', next: 'Level1' });
+    const next = this.next ?? { scene: 'Cutscene', data: { key: 'l1_home', next: { scene: 'Level1', data: {} } } };
+    this.scene.start(next.scene, next.data);
   }
 }

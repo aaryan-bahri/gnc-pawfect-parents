@@ -23,3 +23,8 @@ export function cardLayout(bodyH, c = CARD) {
   h = Math.max(c.minH, h + (h % 2));                       // even height = whole art pixels
   return { h, titleY, bodyY, buttonY, fits: h <= c.maxH };
 }
+
+// The blocking dialogue box across the bottom of the screen (asset group 8). Text wraps at `wrap` and must fit `maxH`
+// (4 lines at 18px); tools/layout_check.html measures every line against it.
+export const DIALOG = { x: 8, y: 238, w: 624, h: 114, textX: 140, textY: 252, wrap: 360, size: 18, maxH: 94,
+  plateX: 136, plateY: 226, plateW: 92, okX: 520, okY: 306, okW: 96, okH: 32 };

@@ -1,52 +1,38 @@
-// Level 2: Check-up & Shopping (GAME_DESIGN.md §7). Task 1 Help the Vet, Task 2 Pet Store Run. Task structure and cancel/retry rules:
-// see LevelBase.js.
+// Level 2: Check-up Day (GAME_DESIGN.md §7). Task 1 Spot the Difference at the vet (a healthy dog and the right products vs your dog
+// and the bag from home), the vaccine cutscene and "That evening", then Task 2 Bath Time (drag each care item onto the right part).
+// Art and layout: asset group 10 (SPOT, CU_HITS, BATH in tools/sprites.py, mirrored in LEVEL2). Cancel/retry rules: see LevelBase.js.
 import { LevelBase } from './LevelBase.js';
-import { HappinessMeter } from '../meter.js';
-import { LEVEL2, fill } from '../content.js';
-import { Dog } from '../dog.js';
-import { art, button, cue, nine, text, touchable, Hud, ParentDialog, ShoppingList, W, CLINIC, CURSOR } from '../ui.js';
+import { LEVEL2 } from '../content.js';
+import { art, button, glow, nine, text, touchable, W, CURSOR } from '../ui.js';
 import { sfx } from '../sfx.js';
-import { load } from '../save.js';
 
-const LENS = { x: W(166), y: W(124) };                  // where close-ups happen: items fly out from here to the shopping list
-const ITEM_IDS = LEVEL2.shop.vetNeeds;
+const COAT_PARTS = ['teeth', 'coat', 'paws', 'ears', 'eyes', 'tail', 'toy'];   // close-ups that show the dog, so they come per coat
+const CU = { y: 84, xs: [64, 336] };                                           // where the two close-ups sit (canvas px)
+const BATH_PARTS = ['neck', 'ears', 'teeth', 'paws', 'coat'];                  // drop targets, most specific first
 
 export class Level2 extends LevelBase {
   constructor() { super('Level2'); }
 
-  // data = { task: 'vet' | 'shop', wrongs } (the vaccine cutscene sits between the two tasks and passes the state back)
-  init(data) { super.init(); this.entry = data ?? {}; }
-
   create() {
-    this.resetRun();
-    const { name, coat } = load();
-    this.f = s => fill(s, name);
-    this.cfg = LEVEL2;
-    this.input.once('pointerdown', () => sfx.unlock());
-    const task = this.entry.task ?? 'vet';
-    this.level = 2;
-    if (task === 'vet') {                               // the clinic, the vet and the nervous dog on the table
-      art(this, 0, 0, 'vet_clinic');
-      this.add.sprite(W(CLINIC.vetX), W(CLINIC.vetFeet), 'vet_stand').setOrigin(0.5, 1).setScale(2).setDepth(40).play('vet_stand');
-      this.dog = new Dog(this, coat, W(CLINIC.dogX), { stage: 'young', y: W(CLINIC.dogFeet) });
-    } else {                                            // the store (the dog waits at home, so there is no dog here)
-      art(this, 0, 0, 'store_aisle');
-    }
-    this.meter = new HappinessMeter({ drainPerSec: LEVEL2.drainPerSec, onEmpty: () => this.fail() });
-    this.hud = new Hud(this, this.meter, { name, onPause: () => this.pause() });
-    this.speaker = task === 'vet' ? 'vet' : 'parent';
-    this.talk = new ParentDialog(this, this.speaker);
-    this.wrongs = this.entry.wrongs ?? 0;
+    this.setup(LEVEL2, 2);
+    const task = this.entry.task ?? 'spot';
+    art(this, 0, 0, task === 'spot' ? 'spot_bg' : 'bath_bg');
+    this.setupUi();
     this.startTask(task);
   }
 
-  // A line from whoever is speaking (the vet in the clinic, the parent for the shopping trip and retries).
-  // In the shop the bubble would sit on the aisle sign, the arrows and the top of the shelf, so a line there is only shown for
-  // as long as it takes to read (and it goes the moment the player acts). The till and the retry screen keep theirs.
-  say(line) {
-    this.talk.setWho(this.speaker);
-    const tip = this.task === 'shop' && !this.tilling && !this.failing;
-    this.talk.say(this.f(line), tip ? 2400 + line.length * 45 : 0);
+  demos() {
+    const L = LEVEL2.spot.layout, B = LEVEL2.bath.layout;
+    const yx = W(L.frames[1] + L.dogDx), yy = W(L.dogFeet - L.bigGround);
+    const dx = W(B.matX), dy = W(B.matFeet - B.bigGround), tx = W(B.tubX), ty = W(B.tubFeet - B.bigGround);
+    return {
+      spot: { caption: 'Tap any part of {name}, or any product on the tray, to look closer.', steps: [{ tap: [yx + W(56), yy + W(54)] }, { tap: [W(L.frames[1] + 46), W(156)] }] },
+      closer: { caption: 'Tap the difference in either picture. If they look the same, tap Back.', steps: [{ tap: [CU.xs[1] + 120, CU.y + 80] }, { tap: [320, 332] }] },
+      bath: { caption: 'Drag a thing from the shelf onto the right part of {name}.',
+              steps: [{ drag: [[W(B.shelfX + 6), W(B.boards[0] - 6)], [dx + W(66), dy + W(28)]], carry: 'care_toothbrush', arc: 30 }] },
+      scrub: { caption: 'Hold and rub back and forth over {name} to make bubbles.', steps: [{ rub: [[tx + W(18), ty + W(26)], [tx + W(52), ty + W(26)]] }] },
+      dry: { caption: 'Hold and rub back and forth over {name} with the towel.', steps: [{ rub: [[dx + W(18), dy + W(26)], [dx + W(52), dy + W(26)]] }] },
+    };
   }
 
   startTask(task, retry = false) {
@@ -54,331 +40,288 @@ export class Level2 extends LevelBase {
     this.task = task;
     const run = this.run;
     this.meter.reset();
-    if (task === 'vet') { this.hud.setTask('vet', 'Check-up  1 of 2'); this.vet(run, retry); }
-    else { this.hud.setTask('coin', 'Shopping  2 of 2'); this.shop(run, retry); }
+    this.setDemo(null);
+    if (task === 'spot') { this.speaker = 'vet'; this.spot(run, retry); }
+    else { this.speaker = 'parent'; this.hud.setTask('bath', 'Bath time  2 of 2'); this.bath(run, retry); }
   }
 
-  // ---------------------------------------------------------------- Task 1: Help the Vet
-  async vet(run, retry) {
-    const V = LEVEL2.vet;
-    this.speaker = 'vet';
-    this.setHint(V.hint);
-    this.say(retry ? V.hint : V.intro);
-    this.dog.play('nervous');
-    this.list = this.own(new ShoppingList(this, 4, 206, ITEM_IDS.length, LEVEL2.items));
-    const spots = V.spots.map(s => this.makeSpot(s));
-    let arrow = this.own(cue(this, W(spots[0].s.ring[0]), W(spots[0].s.ring[1]) - 13));   // a pointer cue on the first spot only
-    this.dog.sprite.setInteractive({ cursor: CURSOR }).on('pointerup', () => this.onAct?.({ id: 'pat' }));
-
-    let petReady = true, told = false;                  // one calming pat per gap between checks (+5)
-    while (spots.some(sp => !sp.done)) {
-      const act = await new Promise(r => { this.onAct = r; }); if (!this.alive(run)) return;
-      this.onAct = null;                                // clicks are ignored until the next wait
-
-      if (act.id === 'pat') {
-        if (!petReady) continue;
-        petReady = false;
-        this.progress();
-        this.dog.play('wag'); sfx.play('wag');
-        const h = this.own(art(this, this.dog.x + 10, this.dog.sprite.y - 90, 'icon_heart', 0.5, 0.5).setDepth(140));
-        this.tweens.add({ targets: h, y: h.y - 30, alpha: 0, duration: 900, onComplete: () => h.destroy() });
-        this.gain(5);
-        this.say(V.patDone);
-        await this.wait(1100); if (!this.alive(run)) return;
-        this.dog.play('nervous');
-        continue;
+  // ---------------------------------------------------------------- Task 1: Spot the Difference
+  async spot(run, retry) {
+    const S = LEVEL2.spot, L = S.layout;
+    this.found = new Set();
+    this.hud.setTask('magnifier', `Found 0 of ${S.total}`);
+    const sides = L.frames.map((fx, i) => this.picture(fx, i === 0 ? 'healthy' : 'yours'));
+    // hovering a part (or product) lights it up in both pictures
+    const pair = id => sides.map(s => s.parts[id]);
+    for (const id of [...S.bodyParts, ...S.tray]) {
+      const [a, b] = pair(id);
+      for (const p of [a, b]) {
+        p.hit.on('pointerover', () => { a.light.show(); b.light.show(); }).on('pointerout', () => { a.light.hide(); b.light.hide(); })
+          .on('pointerup', () => { sfx.play('click'); this.onAct?.(id); });
       }
-
-      const sp = spots.find(x => x.s.id === act.id);
-      if (sp.done) continue;
-      arrow?.destroy(); arrow = null;
-      await this.closeUp(sp, run); if (!this.alive(run)) return;
-      sp.done = true;
-      sp.ring.stop().setTexture('icon_check');
-      sp.pill.setAlpha(0.6);
-      sp.zones.forEach(z => z.disableInteractive());
-      petReady = true;
-      this.setHint(V.hint);
-      if (!told && spots.some(x => !x.done)) { told = true; this.say(V.pat); }
     }
+    this.yours = sides[1];
+    await this.say(retry ? S.closer : S.intro); if (!this.alive(run)) return;
+    this.setDemo('spot');
+    await this.showDemo('spot'); if (!this.alive(run)) return;
+    this.nextHint();
 
+    while (this.found.size < S.total) {
+      const id = await new Promise(r => { this.onAct = r; }); if (!this.alive(run)) return;
+      this.onAct = null;
+      pair(id).forEach(p => p.light.hide());
+      this.progress();
+      await this.closer(id, run); if (!this.alive(run)) return;
+      this.setDemo('spot');
+      this.nextHint();
+    }
     this.hintText = null;
-    this.dog.play('sit');
-    this.say(V.done);
-    await this.wait(2600); if (!this.alive(run)) return;
-    // the vaccine is a cutscene beat; the shopping trip follows it
-    this.scene.start('Cutscene', { key: 'vaccine', next: { scene: 'Level2', data: { task: 'shop', wrongs: this.wrongs } } });
+    await this.say(S.done); if (!this.alive(run)) return;
+    this.handOff('vaccine', 'bath');                    // the vaccine, "That evening", then back here for the bath
   }
 
-  // One spot to check: a blinking ring on the dog, a label next to it, and a hit zone for each (fingers need the label).
-  makeSpot(s) {
-    const [rx, ry] = s.ring, [px, py] = s.pill;
-    const sp = { s, done: false, zones: [] };
-    sp.ring = this.own(this.add.sprite(W(rx), W(ry), 'spot_ring').setScale(2).setDepth(60).play('spot_ring'));
-    sp.pill = this.own(this.add.container(W(px), W(py), [nine(this, 0, 0, 'card_info', 52, 28, 6),
-      text(this, 26, 5, s.label, 13).setOrigin(0.5, 0)]).setDepth(60));
-    const hit = (x, y, w, h) => {
-      const z = this.own(this.add.zone(x, y, w, h).setOrigin(0).setDepth(61).setInteractive({ cursor: CURSOR }));
-      z.on('pointerup', () => { sfx.play('click'); this.onAct?.({ id: s.id }); });
-      sp.zones.push(z);
-    };
-    hit(W(rx) - 12, W(ry) - 12, 24, 24);
-    hit(W(px) - 4, W(py) - 4, 60, 36);
-    return sp;
+  // One framed picture: the dog (with every problem on "your" side), the tray of products, invisible pixel-exact hit shapes and
+  // hover rings. Returns { parts: { id: { hit, light } } } and the dog's top-left for placing found circles.
+  picture(fx, side) {
+    const S = LEVEL2.spot, L = S.layout, yours = side === 'yours';
+    const x0 = W(fx + L.dogDx), y0 = W(L.dogFeet - L.bigGround);
+    this.own(text(this, W(fx + 45) + 60, W(L.top + 3), yours ? this.dogName : 'Healthy', 14).setOrigin(0.5, 0).setDepth(20));
+    this.own(art(this, x0, y0, `big_${this.coat}`).setDepth(10));
+    if (yours) for (const n of ['nails', 'ears', 'teeth', 'fleas']) this.own(art(this, x0, y0, `issue_${n}`).setDepth(11));
+    const parts = {};
+    for (const id of S.bodyParts) {
+      const ring = this.own(art(this, x0, y0, `ring_${id}`).setDepth(12).setVisible(false));
+      const hit = this.own(art(this, x0, y0, `part_${id}`).setAlpha(0.001).setDepth(13));
+      touchable(hit, { exact: true });
+      parts[id] = { hit, light: { show: () => ring.setVisible(true), hide: () => ring.setVisible(false) } };
+    }
+    S.tray.forEach((id, i) => {
+      const key = `tray_${id}_${yours && id !== 'brush' ? 'home' : 'dog'}`;
+      const img = this.own(art(this, W(fx + L.itemXs[i]), W(L.itemBottom), key, 0.5, 1).setDepth(10));
+      touchable(img, { pad: 4 });
+      parts[id] = { hit: img, light: glow(this, img, { hover: false }) };
+    });
+    return { fx, x0, y0, parts };
   }
 
-  // The magnifying-glass close-up: the vet explains, what it found flies onto the shopping list, then "Next".
-  async closeUp(sp, run) {
-    const { coat } = load(), s = sp.s;
-    this.meter.pause();                                 // reading time is free
+  nextHint() {
+    const S = LEVEL2.spot;
+    const left = Object.entries(S.diffs).find(([k]) => !this.found.has(k));
+    if (left) this.setHint(S.hint.replace('{part}', S.names[left[1].part]));
+  }
+
+  // The closer look: both close-ups side by side. Tap the difference (+15 and the vet's fact), miss (-5), or Back.
+  async closer(id, run) {
+    const S = LEVEL2.spot;
+    const diff = Object.entries(S.diffs).find(([, d]) => d.part === id);
+    const key = side => `cu_${id}_${diff || side === 'healthy' ? side : 'healthy'}${COAT_PARTS.includes(id) ? '_' + this.coat : ''}`;
     sfx.play('page');
-    const box = this.own(this.add.container(0, 0).setDepth(90));
-    box.add(art(this, 0, 0, `closeup_${s.id}_${coat}`));
-    this.say(s.say);
-    await this.wait(800); if (!this.alive(run)) return;
-    for (const id of s.items) { await this.flyToList(id, run); if (!this.alive(run)) return; }
-    await new Promise(r => { const b = this.own(button(this, 504, 296, 112, 32, 'Next', () => { b.destroy(); r(); }, { size: 18 }).setDepth(95)); });
-    if (!this.alive(run)) return;
-    box.destroy();
-    this.meter.resume();
-    this.progress();
-  }
-
-  flyToList(id, run) {
-    const to = this.list.nextPos();
-    const icon = this.own(art(this, LENS.x, LENS.y, `icon_${id}`, 0.5, 0.5).setDepth(200));
-    return new Promise(r => this.tweens.add({ targets: icon, x: to.x, y: to.y, duration: 600, ease: 'Sine.easeInOut',
-      onComplete: () => { icon.destroy(); if (this.alive(run)) { this.list.add(id); sfx.play('chime'); this.hud.bump(); } r(); } }));
-  }
-
-  // ---------------------------------------------------------------- Task 2: Pet Store Run
-  // Four aisles (tap an item for its price, then Add), a basket, a coin jar, and a till where each item is explained.
-  // Needs = the nine things on the paper. Wants = optional extras that must not eat the needs' coins. Look-alikes = wrong pick (-5).
-  async shop(run, retry) {
-    const S = LEVEL2.shop;
-    this.speaker = 'parent';
-    this.needs = [...S.vetNeeds, ...S.parentNeeds];
-    this.tilling = false;
-    this.coins = S.budget; this.basket = []; this.paid = new Set(); this.sawWant = false; this.announced = false; this.aisle = 0; this.layer = null; this.moving = false;   // (a retry can kill a slide mid-way)
-    this.list = this.own(new ShoppingList(this, 4, 132, this.needs.length, LEVEL2.items));
-    S.vetNeeds.forEach(id => this.list.add(id));
-    this.buildStoreUi();
-    this.showAisle(0);
-
-    if (retry) S.parentNeeds.forEach(id => this.list.add(id));
-    else {                                              // the parent writes four more things on the list
-      this.meter.pause();
-      this.say(S.intro);
-      await this.wait(2600); if (!this.alive(run)) return;
-      this.say(S.parent);
-      for (const id of S.parentNeeds) { await this.wait(500); if (!this.alive(run)) return; this.list.add(id); sfx.play('chime'); }
-      await this.wait(2800); if (!this.alive(run)) return;
-      this.meter.resume();
-    }
-    this.say(S.hint);
-    this.setHint(S.hint);
-
-    for (;;) {
-      const act = await new Promise(r => { this.onAct = r; }); if (!this.alive(run)) return;
-      this.onAct = null;                                // taps are ignored while an action plays out
-      this.talk.hide();                                 // the player is shopping: get the bubble off the shelf
-      if (act.type === 'item') { await this.tryAdd(act.id, run); if (!this.alive(run)) return; continue; }
-      const go = await this.basketPanel(); if (!this.alive(run)) return;
-      if (go !== 'checkout') continue;
-      if (this.needs.some(id => !this.basket.includes(id))) { this.say(S.missing); this.progress(); continue; }
-      await this.till(run);
-      return;
-    }
-  }
-
-  // Coin jar card, aisle sign + arrows, basket button.
-  buildStoreUi() {
-    this.own(nine(this, 282, 6, 'card_info', 112, 32, 6).setDepth(100));
-    this.jar = this.own(this.add.sprite(290, 8, 'coin_jar', 5).setOrigin(0).setScale(2).setDepth(101));
-    this.coinText = this.own(text(this, 324, 12, String(LEVEL2.shop.budget), 16).setDepth(101));
-    this.signText = this.own(text(this, 408, 110, '', 16).setOrigin(0.5, 0).setDepth(65));
-    this.arrows = [['arrow_left', 266, -1], ['arrow_right', 550, 1]].map(([key, x, dir]) => {
-      const a = this.own(touchable(art(this, x, 106, key).setDepth(65), { pad: 8 }));
-      a.on('pointerup', () => { sfx.play('click'); this.go(dir); });
-      return a;
-    });
-    this.basketBtn = this.own(touchable(this.add.sprite(578, 288, 'basket', 0).setOrigin(0).setScale(2).setDepth(62), { pad: 4 }));
-    this.basketBtn.on('pointerup', () => { sfx.play('click'); this.onAct?.({ type: 'basket' }); });
-    this.basketTag = this.own(nine(this, 594, 262, 'card_info', 28, 24, 6).setDepth(62));           // the count sits on a little tag above the basket
-    this.basketText = this.own(text(this, 608, 266, '0', 14).setOrigin(0.5, 0).setDepth(63));
-  }
-
-  updateCoins() {
-    const S = LEVEL2.shop;
-    this.coinText.setText(String(this.coins));
-    this.jar.setFrame(Math.min(5, Math.ceil(this.coins / S.budget * 5)));
-    this.basketText.setText(String(this.basket.length));
-    this.basketBtn.setFrame(this.basket.length ? 1 : 0);
-  }
-
-  // Canvas position of an item's centre on the current aisle (the shelf layout in tools/sprites.py: STORE, STORE_AISLES).
-  slots(ids) { return ids.length === 3 ? [146, 204, 262] : [175, 233]; }
-  itemPos(id) {
-    const rows = LEVEL2.shop.aisles[this.aisle].rows;
-    for (let r = 0; r < rows.length; r++) {
-      const k = rows[r].indexOf(id);
-      if (k >= 0) return { x: W(this.slots(rows[r])[k]), y: W([112, 156][r]) - 22 };
-    }
-    return { x: 320, y: 200 };
-  }
-
-  go(dir) {
-    if (this.moving) return;
-    const n = LEVEL2.shop.aisles.length;
-    this.aisle = (this.aisle + dir + n) % n;
-    this.talk.hide();
-    this.showAisle(this.aisle, dir);
-    this.progress();
-  }
-
-  // The shelves of one aisle: item sprites (hidden once in the basket) with a price on each shelf edge.
-  showAisle(i, dir = 0) {
-    const S = LEVEL2.shop, A = S.aisles[i];
-    const layer = this.own(this.add.container(0, 0).setDepth(60));
-    this.signText.setText(A.name);
-    A.rows.forEach((ids, r) => {
-      const xs = this.slots(ids), bt = [112, 156][r];
-      ids.forEach((id, k) => {
-        if (!this.basket.includes(id)) {
-          const img = touchable(art(this, W(xs[k]), W(bt + 1), `shop_${id}`, 0.5, 1), { pad: 6 });
-          img.on('pointerup', () => { sfx.play('click'); this.onAct?.({ type: 'item', id }); });
-          layer.add(img);
-        }
-        layer.add([art(this, W(xs[k] - 11), W(bt + 4), 'coin_small'), text(this, W(xs[k] - 1), W(bt + 4), String(S.items[id].price), 12)]);
-      });
-    });
-    const old = this.layer;
-    this.layer = layer;
-    if (!old) return;
-    if (!dir) { old.destroy(); return; }
-    this.moving = true;                                 // slide the old shelf out and the new one in
-    layer.x = dir * 400;
-    this.tweens.add({ targets: old, x: -dir * 400, duration: 220, onComplete: () => old.destroy() });
-    this.tweens.add({ targets: layer, x: 0, duration: 220, onComplete: () => { this.moving = false; } });
-  }
-
-  // An item flies from a to b (canvas centre points) and resolves when it lands.
-  flyItem(id, a, b, ms = 350) {
-    const s = this.own(art(this, a.x, a.y, `shop_${id}`, 0.5, 0.5).setDepth(200));
-    return new Promise(r => this.tweens.add({ targets: s, x: b.x, y: b.y, duration: ms, ease: 'Sine.easeInOut', onComplete: () => { s.destroy(); r(); } }));
-  }
-
-  // The card that opens when an item is tapped: name, price and the coins left afterwards. Resolves true for "Add".
-  itemModal(id) {
-    const it = LEVEL2.shop.items[id], after = this.coins - it.price;
-    this.meter.pause();
-    return new Promise(res => {
-      const c = this.own(this.add.container(0, 0).setDepth(280));
-      const done = v => { c.destroy(); this.meter.resume(); res(v); };
-      c.add(this.add.rectangle(0, 0, 640, 360, 0x3E2A24, 0.4).setOrigin(0).setInteractive());
-      c.add(nine(this, 200, 100, 'card_info', 240, 164, 6));
-      c.add(text(this, 320, 112, it.name, 18, { bold: true }).setOrigin(0.5, 0));
-      c.add(art(this, 216, 142, `shop_${id}`));
-      c.add(text(this, 272, 144, `Costs ${it.price} coins`, 14));
-      c.add(text(this, 272, 164, after >= 0 ? `After: ${after} coins left` : 'Not enough coins', 14, { color: after >= 0 ? '#6FA07E' : '#C95A52' }));
-      c.add(button(this, 214, 222, 108, 32, 'Add', () => done(true), { size: 16 }));
-      c.add(button(this, 338, 222, 92, 32, 'Not now', () => done(false), { kind: 'cream', size: 14 }));
-    });
-  }
-
-  async tryAdd(id, run) {
-    const S = LEVEL2.shop, it = S.items[id];
-    const from = this.itemPos(id), to = { x: 608, y: 300 };
-    this.progress();
-    if (!await this.itemModal(id)) return; if (!this.alive(run)) return;
-
-    // a wrong pick (look-alike) or a want that would starve the needs: it goes to the basket, the card explains, and it goes back
-    const owed = this.needs.filter(n => !this.basket.includes(n)).reduce((a, n) => a + S.items[n].price, 0);
-    const starves = it.kind === 'want' && this.coins - it.price < owed;
-    if (it.kind === 'wrong' || starves) {
-      await this.flyItem(id, from, to); if (!this.alive(run)) return;
-      this.gain(-5);
-      const shown = await (starves ? this.card('bad', S.nudge.fact, S.nudge.title) : this.card('bad', it.fact, S.wrongTitle));
-      if (!this.alive(run)) return;
-      if (!shown) this.say(starves ? S.nudge.again : S.wrongAgain);                  // the lesson was already shown: a short line instead
-      await this.flyItem(id, to, from);
-      return;
-    }
-    if (it.price > this.coins) { this.say(S.tooMuch); return; }
-
-    await this.flyItem(id, from, to); if (!this.alive(run)) return;
-    this.coins -= it.price; this.basket.push(id);
-    this.updateCoins(); this.showAisle(this.aisle); this.hud.bump();
-    if (this.needs.includes(id)) {
-      this.list.tick(id);
-      if (!this.paid.has(id)) {                         // +10 once per need, so taking it out and back in can't be farmed
-        this.paid.add(id);
-        this.gain(10);
-        if (it.fact) { await this.card('good', it.fact); if (!this.alive(run)) return; }
+    const c = this.own(this.add.container(0, 0).setDepth(200));
+    c.add(this.add.rectangle(0, 0, 640, 360, 0x3E2A24, 0.55).setOrigin(0).setInteractive());
+    const rings = [];
+    ['healthy', 'yours'].forEach((side, i) => {
+      const x = CU.xs[i];
+      c.add(nine(this, x - 8, 48, 'card_info', 256, 264, 6));
+      c.add(text(this, x + 120, 58, side === 'healthy' ? 'Healthy' : this.dogName, 16).setOrigin(0.5, 0));
+      const img = art(this, x, CU.y, key(side)).setInteractive({ cursor: CURSOR });
+      c.add(img);
+      img.on('pointerup', () => this.onCloser?.('miss'));
+      if (diff) {
+        const [hx, hy, hw, hh] = diff[1].hit;
+        const z = this.add.zone(x + W(hx), CU.y + W(hy), W(hw), W(hh)).setOrigin(0).setInteractive({ cursor: CURSOR });
+        z.on('pointerup', () => this.onCloser?.('hit'));
+        c.add(z);
+        const r = art(this, x + W(hx - 3), CU.y + W(hy - 3), `found_cu_${id}`).setVisible(this.found.has(diff[0]));
+        c.add(r); rings.push(r);
       }
-    } else if (!this.sawWant) {
-      this.sawWant = true;
-      await this.card('info', S.wantFact, 'Looking good!'); if (!this.alive(run)) return;
+    });
+    let back, foundNow = false;
+    const done = new Promise(r => { back = button(this, 270, 316, 100, 32, 'Back', r, { size: 17 }); c.add(back); });
+    await this.modal(async () => {
+      this.setDemo('closer');
+      if (!this.found.has(diff?.[0])) await this.showDemo('closer');
+      if (!this.alive(run)) return;
+      if (!diff) { await this.say(S.decoys[id]); return; }
+      if (this.found.has(diff[0])) { await this.say(S.already); return; }
+      let missed = false;
+      for (;;) {
+        const what = await Promise.race([done.then(() => 'back'), new Promise(r => { this.onCloser = r; })]);
+        this.onCloser = null;
+        if (!this.alive(run) || what === 'back') return;
+        if (what === 'hit') {
+          foundNow = true;
+          rings.forEach(r => r.setVisible(true));
+          this.markFound(diff[0]);
+          await this.wait(500); if (!this.alive(run)) return;
+          await this.card('good', diff[1].fact, 'Found it!');
+          return;
+        }
+        if (!missed) { missed = true; this.gain(-5); await this.say(S.miss); }
+        else await this.say(S.missAgain);
+        if (!this.alive(run)) return;
+      }
+    });
+    if (!this.alive(run)) return;
+    if (!foundNow) await done;                          // decoys, repeats and misses: the player reads, then taps Back
+    c.destroy();
+  }
+
+  markFound(d) {
+    const S = LEVEL2.spot, L = S.layout, D = S.diffs[d], y = this.yours;
+    this.found.add(d);
+    this.gain(15);
+    this.hud.setTask('magnifier', `Found ${this.found.size} of ${S.total}`);
+    let x, top;
+    if (D.ring) { x = y.x0 + W(D.ring[0]); top = y.y0 + W(D.ring[1]); }
+    else {
+      const img = y.parts[D.part].hit;
+      x = img.x - 20; top = img.y - img.displayHeight / 2 - 18;
     }
-    if (!this.announced && this.needs.every(n => this.basket.includes(n))) { this.announced = true; this.say(S.allDone); }
+    this.own(art(this, x, top, 'found_ring_small').setDepth(14));
   }
 
-  removeFromBasket(id) {
-    const it = LEVEL2.shop.items[id];
-    this.coins += it.price;
-    this.basket.splice(this.basket.indexOf(id), 1);
-    if (this.needs.includes(id)) this.list.tick(id, false);
-    this.updateCoins(); this.showAisle(this.aisle); this.progress();
-    sfx.play('click');
+  // ---------------------------------------------------------------- Task 2: Bath Time
+  async bath(run, retry) {
+    const B = LEVEL2.bath, L = B.layout;
+    this.tubFront = this.own(art(this, 0, 0, 'bath_tub_front').setDepth(15));   // over the dog only while it is in the tub
+    // the dog (with the problems still showing), its hover rings and the shapes used to tell which part an item is over
+    const dog = this.own(this.add.container(W(L.matX), W(L.matFeet - L.bigGround)).setDepth(20));
+    this.bigDog = art(this, 0, 0, `big_${this.coat}`);
+    dog.add(this.bigDog);
+    this.issues = {};
+    for (const n of ['nails', 'ears', 'teeth', 'fleas']) { this.issues[n] = art(this, 0, 0, `issue_${n}`); dog.add(this.issues[n]); }
+    this.foam = this.add.sprite(0, 0, 'foam', 0).setOrigin(0).setScale(2).setVisible(false);
+    dog.add(this.foam);
+    this.rings = {};
+    for (const p of BATH_PARTS) { this.rings[p] = art(this, 0, 0, `ring_${p}`).setVisible(false); dog.add(this.rings[p]); }
+    this.dogBox = dog;
+
+    this.done = new Set();
+    this.phase = 'mat';
+    B.order.forEach((id, i) => this.shelfItem(id, i, run));
+    await this.say(retry ? B.hint : B.intro); if (!this.alive(run)) return;
+    this.setDemo('bath');
+    await this.showDemo('bath'); if (!this.alive(run)) return;
+    this.setHint(B.hint);
+    await new Promise(r => { this.bathDone = r; }); if (!this.alive(run)) return;
+    this.hintText = null;
+    this.bigDog.setFrame(1);
+    sfx.play('wag');
+    await this.say(B.done); if (!this.alive(run)) return;
+    this.complete(run);
   }
 
-  // Everything bought so far; tap an item to put it back. Resolves 'checkout' or 'close'.
-  basketPanel() {
-    const S = LEVEL2.shop;
-    this.meter.pause();
-    return new Promise(res => {
-      const c = this.own(this.add.container(0, 0).setDepth(280));
-      const close = v => { c.destroy(); this.meter.resume(); res(v); };
-      const draw = () => {
-        c.removeAll(true);
-        c.add(this.add.rectangle(0, 0, 640, 360, 0x3E2A24, 0.45).setOrigin(0).setInteractive());
-        c.add(nine(this, 150, 60, 'card_info', 340, 280, 6));
-        c.add(text(this, 170, 74, 'Your basket', 18, { bold: true }));
-        if (!this.basket.length) c.add(text(this, 320, 150, 'Your basket is empty.', 14).setOrigin(0.5, 0));
-        this.basket.forEach((id, n) => {
-          const img = touchable(art(this, 174 + (n % 5) * 58, 100 + Math.floor(n / 5) * 56, `shop_${id}`), { pad: 4 });
-          img.on('pointerup', () => { this.removeFromBasket(id); draw(); });
-          c.add(img);
-        });
-        c.add(text(this, 170, 262, `Total: ${S.budget - this.coins} of ${S.budget} coins`, 14, { bold: true }));
-        c.add(text(this, 170, 282, 'Tap an item to put it back.', 12, { color: '#8a6f66' }));
-        c.add(button(this, 184, 304, 112, 32, 'Checkout', () => close('checkout'), { size: 16 }));
-        c.add(button(this, 312, 304, 130, 32, 'Keep shopping', () => close('close'), { kind: 'cream', size: 14 }));
-      };
-      draw();
+  // A care item on the shelf: drag it onto the dog. Its own pixels are the grab area (the shelf is tight).
+  shelfItem(id, i, run) {
+    const B = LEVEL2.bath, L = B.layout;
+    const key = { shampoo: 'tray_shampoo_dog', flea: 'tray_flea_dog' }[id] ?? `care_${id}`;
+    const home = { x: W(L.shelfX + (i % 3) * 16 - 4), y: W(L.boards[Math.floor(i / 3)]) };
+    const img = this.own(art(this, home.x, home.y, key, 0, 1).setDepth(40));
+    touchable(img, { exact: true, draggable: true });
+    glow(this, img);
+    const back = () => this.tweens.add({ targets: img, x: home.x, y: home.y, duration: 220 });
+    let over = null;
+    img.on('dragstart', () => { this.progress(); sfx.play('click'); img.setDepth(60); });
+    img.on('drag', (p, x, y) => {
+      img.setPosition(Math.round(x / 2) * 2, Math.round(y / 2) * 2);
+      const now = this.partAt(p.worldX, p.worldY);
+      if (now !== over) { if (over) this.rings[over].setVisible(false); if (now) this.rings[now].setVisible(true); over = now; }
+    });
+    img.on('dragend', async () => {
+      img.setDepth(40);
+      if (over) this.rings[over].setVisible(false);
+      const part = over;
+      over = null;
+      if (!part) { back(); return; }
+      await this.drop(id, part, img, back, run);
     });
   }
 
-  // At the till each item is matched, one by one, to the reason it is in the basket (the vet's finding for the health items).
-  async till(run) {
-    const S = LEVEL2.shop;
-    this.meter.pause();
-    this.hintText = null;
-    this.tilling = true;
-    [this.layer, this.basketBtn, this.basketText, this.basketTag, this.signText, ...this.arrows].forEach(o => o.destroy());   // nothing underneath stays tappable
-    this.own(art(this, 0, 0, 'store_till').setDepth(70));
-    const skip = this.own(this.add.zone(0, 0, 640, 360).setOrigin(0).setDepth(90).setInteractive());           // tap to move on
-    const order = [...this.needs, ...this.basket.filter(id => !this.needs.includes(id))];
-    for (const id of order) {
-      const it = S.items[id];
-      const img = this.own(art(this, 400, 224, `shop_${id}`, 0.5, 1).setDepth(80));
-      this.say(it.kind === 'need' ? it.why : S.tillWant);
-      sfx.play('page');
-      await Promise.race([this.wait(3000), new Promise(r => skip.once('pointerup', r))]); if (!this.alive(run)) return;
-      await new Promise(r => this.tweens.add({ targets: img, y: 190, alpha: 0, duration: 300, onComplete: r })); if (!this.alive(run)) return;
+  // Which body part (if any) is under a canvas point: the part masks, looked up by pixel.
+  partAt(px, py) {
+    const d = this.dogBox, x = Math.floor((px - d.x) / 2), y = Math.floor((py - d.y) / 2);
+    if (x < 0 || y < 0 || x >= 76 || y >= 62) return null;
+    return BATH_PARTS.find(p => this.textures.getPixelAlpha(x, y, `part_${p}`) > 0) ?? null;
+  }
+
+  async drop(id, part, img, back, run) {
+    const B = LEVEL2.bath, it = B.items[id];
+    const allowed = { mat: ['toothbrush', 'clippers', 'ear'], tub: ['shampoo'], dry: ['towel'], flea: ['flea'] }[this.phase] ?? [];
+    back();
+    if (this.done.has(id)) { await this.say(B.notYet.done); return; }
+    if (!allowed.includes(id)) { await this.say(B.notYet[id] ?? B.hint); return; }
+    if (it.part !== part && !(it.part === 'coat' && part !== 'neck' && (id === 'shampoo' || id === 'towel'))) {
+      this.gain(-5);
+      await this.say(B.wrong.replace('{item}', it.name).replace('{part}', it.part === 'paws' ? 'paws (nails)' : it.part));
+      return;
     }
-    this.say(S.tillDone);
-    await this.wait(2800); if (!this.alive(run)) return;
-    this.complete(run);
+    // right place
+    this.done.add(id);
+    img.setVisible(false).disableInteractive();
+    this.gain(15);
+    if (it.issue) { this.tweens.add({ targets: this.issues[it.issue], alpha: 0, duration: 500 }); }
+    this.bigDog.setFrame(1);
+    this.time.delayedCall(700, () => this.bigDog.setFrame(0));
+    await this.say(it.line); if (!this.alive(run)) return;
+    if (id === 'shampoo' || id === 'towel') {
+      if (!await this.rub(id, run)) return;
+    }
+    if (this.phase === 'mat' && this.done.size === 3) {
+      await this.say(B.tub); if (!this.alive(run)) return;
+      await this.moveDog(B.layout.tubX, B.layout.tubFeet, true); if (!this.alive(run)) return;
+      this.phase = 'tub';
+    } else if (this.phase === 'flea' && id === 'flea') {
+      this.bathDone?.();
+    }
+  }
+
+  // Rub back and forth over the dog: shampoo makes foam grow; the towel dries it off.
+  async rub(id, run) {
+    const B = LEVEL2.bath;
+    this.setDemo(id === 'shampoo' ? 'scrub' : 'dry');
+    await this.showDemo(this.demoKey); if (!this.alive(run)) return false;
+    const d = this.dogBox;
+    if (id === 'shampoo') this.foam.setFrame(0).setVisible(true).setAlpha(1);
+    const zone = this.own(this.add.zone(d.x + W(10), d.y + W(8), W(56), W(40)).setOrigin(0).setDepth(50).setInteractive({ cursor: CURSOR }));
+    glow(this, zone);
+    let dist = 0, last = null;
+    await new Promise(res => {
+      zone.on('pointermove', p => {
+        if (!p.isDown) { last = null; return; }
+        if (last) dist += Math.abs(p.worldX - last.x) + Math.abs(p.worldY - last.y);
+        last = { x: p.worldX, y: p.worldY };
+        this.progress();
+        const u = Math.min(1, dist / B.rubNeeded);
+        if (id === 'shampoo') this.foam.setFrame(Math.min(2, Math.floor(u * 3)));
+        else this.foam.setVisible(false);
+        if (u >= 1) res();
+      });
+      zone.on('pointerup', () => { last = null; });
+    });
+    zone.destroy();
+    if (!this.alive(run)) return false;
+    this.setDemo('bath');
+    sfx.play('wag');
+    if (id === 'shampoo') {
+      await this.say(B.scrubbed); if (!this.alive(run)) return false;
+      this.tweens.add({ targets: this.foam, alpha: 0, duration: 400 });
+      await this.moveDog(B.layout.matX, B.layout.matFeet, false); if (!this.alive(run)) return false;
+      this.phase = 'dry';
+    } else {
+      await this.say(B.dried); if (!this.alive(run)) return false;
+      this.phase = 'flea';
+    }
+    return true;
+  }
+
+  // The dog hops into (or out of) the tub: a little arc, with the tub's front drawn over it while inside.
+  moveDog(x, feet, intoTub) {
+    const d = this.dogBox, L = LEVEL2.bath.layout, x0 = d.x, y0 = d.y, x1 = W(x), y1 = W(feet - L.bigGround);
+    if (!intoTub) this.tubFront.setDepth(15);
+    sfx.play('bark');
+    const t = { u: 0 };
+    return new Promise(r => this.tweens.add({ targets: t, u: 1, duration: 600, ease: 'Sine.easeInOut',
+      onUpdate: () => d.setPosition(Math.round((x0 + (x1 - x0) * t.u) / 2) * 2, Math.round((y0 + (y1 - y0) * t.u - 80 * t.u * (1 - t.u)) / 2) * 2),
+      onComplete: () => { if (intoTub) this.tubFront.setDepth(30); r(); } }));
   }
 }

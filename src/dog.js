@@ -1,8 +1,8 @@
-// The dog (puppy or young dog): one sprite (origin at the paws), coat-specific animations, and promise-based walking.
+// The dog (puppy, young or adult): one sprite (origin at the paws), coat-specific animations, and promise-based walking.
 import { W, WORLD } from './ui.js';
 
 export class Dog {
-  // stage: 'puppy' or 'young'. y is where the paws stand (canvas px); the default is the living-room floor.
+  // stage: 'puppy', 'young' or 'adult'. y is where the paws stand (canvas px); the default is the living-room floor.
   constructor(scene, coat, x, { stage = 'puppy', y = W(WORLD.groundY + 2) } = {}) {
     this.scene = scene;
     this.coat = coat;
@@ -30,11 +30,11 @@ export class Dog {
     return false;
   }
 
-  // Walk to canvas x at `speed` px/s. Resolves on arrival (never if the tween is killed by a task restart).
-  walkTo(x, speed = 110) {
+  // Walk (or run: `anim`) to canvas x at `speed` px/s. Resolves on arrival (never if the tween is killed by a task restart).
+  walkTo(x, speed = 110, anim = 'walk') {
     const dx = x - this.sprite.x;
     if (Math.abs(dx) < 2) return Promise.resolve();
-    this.face(dx).play('walk');
+    this.face(dx).play(anim);
     return new Promise(resolve => {
       this.scene.tweens.add({ targets: this.sprite, x, duration: Math.abs(dx) / speed * 1000, onComplete: () => {
         this.play('idle'); resolve();

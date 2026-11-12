@@ -4,7 +4,9 @@ import { DogSetup } from './scenes/DogSetup.js';
 import { Cutscene } from './scenes/Cutscene.js';
 import { Level1 } from './scenes/Level1.js';
 import { Level2 } from './scenes/Level2.js';
-import { LevelComplete } from './scenes/LevelComplete.js';
+import { LevelComplete, Finale } from './scenes/LevelComplete.js';
+import { Level3 } from './scenes/Level3.js';
+import { LevelSelect } from './scenes/LevelSelect.js';
 import { view, refit, WORLD_W, WORLD_H } from './view.js';
 import { sfx } from './sfx.js';
 
@@ -23,7 +25,7 @@ const game = new Phaser.Game({
   pixelArt: true,
   backgroundColor: '#FFF4E0',
   scale: { mode: Phaser.Scale.NONE, zoom: 1 / view.dpr },
-  scene: [Boot, Preload, Title, DogSetup, Cutscene, Level1, LevelComplete, Level2],
+  scene: [Boot, Preload, Title, LevelSelect, DogSetup, Cutscene, Level1, Level2, Level3, LevelComplete, Finale],
 });
 // A phone held upright gets a "turn your phone" screen, and the game loop sleeps until it is turned.
 const rotate = document.getElementById('rotate'), coarse = matchMedia('(pointer: coarse)');

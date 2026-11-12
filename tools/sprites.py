@@ -162,7 +162,7 @@ YOUNG = dict(w=40, h=40, body=(16, 26, 11, 6), head=(28, 15, 6.5), snout=(34, 18
 
 
 def draw_dog(d, *, legs=(0, 0, 0, 0), lift=(0, 0, 0, 0), tail=45, head=(0, 0), eyes='open',
-             mouth='closed', ear=(0, 0), body_dy=0, pose='stand', tuck=False):
+             mouth='closed', ear=(0, 0), body_dy=0, pose='stand', tuck=False, ball=False):
     c = Canvas(d['w'], d['h'])
     bx, by, brx, bry = d['body']
     g = d['ground']
@@ -258,6 +258,8 @@ def draw_dog(d, *, legs=(0, 0, 0, 0), lift=(0, 0, 0, 0), tail=45, head=(0, 0), e
         c.rect(exx, eyy + 1, 2, 1, 'k'); c.put(exx + 1, eyy, 'k'); c.put(exx - 1, eyy - 1, 'B')
     elif eyes == 'squint':
         c.put(exx, eyy, 'k'); c.put(exx + 1, eyy + 1, 'k'); c.put(exx, eyy + 2, 'k')
+    elif eyes == 'whale':                                         # stress: the white of the eye shows, the eye looks back
+        c.rect(exx - 1, eyy, 3, 2, 'w'); c.rect(exx - 1, eyy, 1, 2, 'k')
     # blush
     c.put(exx - 1, eyy + 3, 'N')
     # mouth
@@ -267,6 +269,17 @@ def draw_dog(d, *, legs=(0, 0, 0, 0), lift=(0, 0, 0, 0), tail=45, head=(0, 0), e
         c.rect(int(sx), my + 1, 2, 2, 'N')
     elif mouth == 'eat':
         c.rect(int(sx) - 1, my, 3, 1, 'k')
+    elif mouth == 'pant':                                         # hot and tired: a long tongue hanging out
+        c.rect(int(sx) - 1, my, 4, 1, 'k')
+        c.rect(int(sx), my + 1, 2, 4, 'N'); c.rect(int(sx) + 1, my + 1, 1, 4, 'p')
+    elif mouth == 'yawn':                                         # stress yawn: a wide-open mouth
+        c.rect(int(sx) - 2, my - 1, 5, 3, 'k'); c.rect(int(sx) - 1, my + 1, 3, 1, 'N')
+    elif mouth == 'lick':                                         # stress lip-lick: the tongue flicks up over the nose
+        c.rect(int(sx) - 1, my, 3, 1, 'k')
+        c.rect(nx - 2, ny + 2, 2, 2, 'N')
+    if ball:                                                      # a tennis ball held in the mouth
+        bx0, by0 = int(sx + srx * 0.4), my
+        c.ellipse(bx0, by0 + 1, 2.6, 2.6, 'Y', shade='y'); c.put(bx0 - 1, by0, 'w'); c.put(bx0 + 1, by0 + 2, 'M')
     return c.outline()
 
 
@@ -822,8 +835,10 @@ ICON_AFTER_OUTLINE = {      # thin line details that the outline pass would othe
 
 
 def icon(name):
+    if name in globals().get('ICONS11', {}):
+        return icon11(name)
     c = Canvas(16, 16)
-    (ICONS.get(name) or ICONS_L2[name])(c)
+    (ICONS.get(name) or ICONS_L2.get(name) or ICONS8[name])(c)
     c.outline()
     if name in ICON_AFTER_OUTLINE:
         ICON_AFTER_OUTLINE[name](c)
@@ -868,7 +883,11 @@ FONT3x5 = {'P': ['111', '101', '111', '100', '100'], 'A': ['010', '101', '111', 
            'T': ['111', '010', '010', '010', '010'], '!': ['1', '1', '1', '0', '1'],
            'U': ['101', '101', '101', '101', '111'], 'Y': ['101', '101', '010', '010', '010'],
            'J': ['001', '001', '001', '101', '010'], 'O': ['010', '101', '101', '101', '010'],
-           'B': ['110', '101', '110', '101', '110'], 'S': ['011', '100', '010', '001', '110']}
+           'B': ['110', '101', '110', '101', '110'], 'S': ['011', '100', '010', '001', '110'],
+           'D': ['110', '101', '101', '101', '110'], 'R': ['110', '101', '110', '101', '101'],
+           'M': ['10001', '11011', '10101', '10001', '10001'], 'H': ['101', '101', '111', '101', '101'],
+           'L': ['100', '100', '100', '100', '111'], 'G': ['011', '100', '101', '101', '011'],
+           'Z': ['111', '001', '010', '100', '111']}
 
 
 def stamp():
@@ -1110,8 +1129,8 @@ def house(c, x, w, h, base_y, wall, roof, door):
     box(c, x + w - 9, top - 12, 5, 7, 'r')                               # chimney
 
 
-def draw_panel_car():
-    """Panel 1: the drive home. Visible area is y 15..146 (letterbox bars cover the rest)."""
+def draw_panel_car(puppy=True):
+    """Panel 1: the drive home (puppy=False: the drive to the rescue centre, an empty box). Visible area is y 15..146."""
     c = Canvas(320, 180)
     c.rect(0, 0, 320, 110, 'S')
     blob(c, 290, 30, 10, 10, 'Y', 'y')                                   # sun
@@ -1151,8 +1170,15 @@ def draw_panel_car():
     c.rect(130, 98, 6, 1, 'w'); c.rect(164, 98, 6, 1, 'w')
     c.rect(160, 112, 1, 17, 'p'); c.rect(150, 115, 5, 1, 'K'); c.rect(185, 115, 5, 1, 'K')     # door seam + handles
     box(c, 130, 104, 15, 7, 'D'); c.pattern(129, 102, ['DD...........DD', '.DD.........DD.'])   # box
-    puppy_head(c, 137, 101)                                               # puppy peeking out
-    c.pattern(136, 90, ['.R.R.', 'RRRRR', '.RRR.', '..R..'])              # heart above the box
+    if puppy:
+        puppy_head(c, 137, 101)                                           # puppy peeking out
+        c.pattern(136, 90, ['.R.R.', 'RRRRR', '.RRR.', '..R..'])          # heart above the box
+    else:
+        c.rect(132, 101, 11, 3, 'L'); c.rect(133, 100, 6, 1, 'L'); c.rect(134, 102, 3, 1, 'l')   # a soft blanket, waiting
+        c.pattern(147, 88, ['..Y..', '.YwY.', '..Y..'])                   # an excited sparkle by the kid
+        c.rect(300, 66, 2, 38, 'd')                                       # sign: RESCUE ->
+        box(c, 270, 56, 44, 13, 'W'); pixel_text(c, 274, 60, 'RESCUE', 'R')
+        c.pattern(300, 60, ['.K..', '.KK.', 'KKKK', '.KK.', '.K..'][:5])
     c.ellipse(152, 103, 4, 4, 'F'); c.rect(148, 98, 9, 3, 'M'); c.rect(155, 100, 3, 1, 'M')   # kid in a cap
     c.put(154, 103, 'k'); c.put(155, 105, 'N')
     c.ellipse(181, 103, 4.5, 4.5, 'F'); c.ellipse(180, 99.5, 4.5, 2.5, 'H'); c.rect(176, 100, 2, 5, 'H')  # parent driving
@@ -1877,21 +1903,10 @@ def group6():
             out[f'assets/sprites/young_{coat}_{name}.png'] = (frames, cols, {'coat': coat, 'anim': name, 'section': 'Young dog (Level 2)'})
         for name, frames in adult_anims().items():
             out[f'assets/sprites/adult_{coat}_{name}.png'] = (frames, cols, {'coat': coat, 'anim': name, 'section': 'Adult dog (growth cutscene)'})
-        for name in CLOSEUPS:
-            out[f'assets/screens/closeup_{name}_{coat}.png'] = ([draw_closeup(name)], cols, {'section': 'bg', 'anim': name})
         for name, fn in (('clinic', draw_panel_clinic), ('vaccine', draw_panel_vaccine)):
             out[f'assets/screens/panel_{name}_{coat}.png'] = ([fn()], cols, {'section': 'bg', 'anim': name})
-    notes = {'vet': 'Health check skill / task card', 'toothbrush': 'Shopping list: dog toothbrush', 'toothpaste': 'Shopping list: dog toothpaste',
-             'flea': 'Shopping list: flea treatment (dog)', 'clippers': 'Shopping list: nail clippers', 'ear': 'Shopping list: ear cleaner (dog)'}
-    for name in ICONS_L2:
-        out[f'assets/ui/icon_{name}.png'] = ([icon(name)], None, {'section': 'Icons', 'anim': name, 'note': notes[name]})
-    out['assets/ui/spot_ring.png'] = (spot_frames(), None, {'section': 'Check-up UI', 'anim': 'spot ring', 'note': 'Blinks over each spot to check'})
-    PS = 'Shopping list paper (pieces)'
-    out['assets/ui/paper_top.png'] = ([paper_top()], None, {'section': PS, 'anim': 'top', 'note': 'Binding strip. The title is text'})
-    out['assets/ui/paper_row.png'] = ([paper_row()], None, {'section': PS, 'anim': 'ruled line', 'note': 'Repeated, one per item'})
-    out['assets/ui/paper_bottom.png'] = ([paper_bottom()], None, {'section': PS, 'anim': 'bottom', 'note': 'Closes the page'})
-    out['assets/ui/list_box.png'] = ([list_box(False)], None, {'section': PS, 'anim': 'tick box', 'note': 'Empty, in front of each item'})
-    out['assets/ui/list_tick.png'] = ([list_box(True)], None, {'section': PS, 'anim': 'ticked box', 'note': 'When bought (store)'})
+    out['assets/ui/icon_vet.png'] = ([icon('vet')], None, {'section': 'Icons', 'anim': 'vet', 'note': 'Health check skill'})
+    # (the old check-up close-ups, spot ring, shopping-list paper and list icons were retired with the shop)
     return out
 
 
@@ -1971,369 +1986,2001 @@ def l2_mockups():
             ('Growth cutscene: young dog to adult', W2, growth)]
 
 
-# ---------------------------------------------------------------- group 7: Level 2, the pet store
-# 24x24 shelf items (shown at 2x). kind: need (vet) / need (parent) / want / look-alike (the wrong pick).
-def _tube(c, band, stripes, cap):
-    c.rect(1, 9, 3, 10, 'E'); c.rect(4, 9, 14, 10, 'W'); c.rect(4, 17, 14, 2, 'E')
-    c.rect(7, 9, 8, 10, band)
-    for sx, col in stripes:
-        c.rect(sx, 9, 1, 10, col)
-    c.rect(18, 11, 5, 6, cap); c.rect(18, 15, 5, 2, 'r' if cap == 'R' else 's')
+# Group 7 (the pet store) was retired with the shop: Level 2 became spot the difference + bath time (groups 10, 11).
 
 
-def _box(c, body, shade, lid):
-    c.rect(5, 2, 14, 20, body); c.rect(5, 19, 14, 3, shade); c.rect(5, 2, 14, 4, lid); c.rect(16, 6, 3, 13, shade)
-
-
-def _bottle(c, body, shade, cap, label):
-    c.rect(6, 7, 12, 15, body); c.rect(6, 19, 12, 3, shade); c.rect(8, 3, 8, 4, cap); c.rect(8, 6, 8, 1, 'K')
-    c.rect(8, 11, 8, 7, label)
-
-
-def _item_toothbrush(c):
-    c.rect(1, 15, 14, 4, 'M'); c.rect(1, 18, 14, 1, 'm'); c.rect(4, 16, 3, 2, 'R')
-    c.rect(15, 15, 7, 4, 'W'); c.rect(15, 18, 7, 1, 'E'); c.rect(15, 10, 7, 5, 'S')
-    for x in (16, 18, 20):
-        c.put(x, 10, 'w'); c.put(x + 1, 12, 's')
-
-
-def _item_toothpaste(c):
-    _tube(c, 'Y', (), 'R'); c.pattern(8, 12, ['K...K', 'KKKKK', 'K...K'])               # a bone on the tube: made for dogs
-
-
-def _item_toothpaste_human(c):
-    _tube(c, 'S', ((9, 'M'), (11, 'M'), (13, 'M')), 'S')
-
-
-def _item_flea(c):
-    _box(c, 'M', 'm', 'W'); c.pattern(8, 9, ['K.K.K.K', '.......', '..KKK..', '.KKKKK.', '..KKK..']); c.pattern(10, 16, ['.S.', 'SwS', '.S.'])
-
-
-def _item_flea_cat(c):
-    _box(c, 'L', 'l', 'W'); c.pattern(8, 9, ['K.....K', 'KK...KK', 'KKKKKKK', 'K.K.K.K', 'KKKKKKK', '.KKKKK.']); c.pattern(10, 17, ['.S.', 'SwS', '.S.'])
-
-
-def _item_ear(c):
-    c.ellipse(12, 4, 3.4, 3.2, 'R', light='N'); c.rect(9, 7, 6, 3, 'W'); c.rect(7, 10, 10, 12, 'L'); c.rect(7, 19, 10, 3, 'l')
-    c.rect(8, 13, 8, 5, 'W'); c.pattern(10, 14, ['.S.', 'SwS', '.S.'])
-
-
-def _item_clippers(c):
-    line(c, 5, 18, 19, 8, 'S', 3); line(c, 5, 6, 19, 15, 'W', 3)
-    ring_blob(c, 5, 18, 'R'); ring_blob(c, 5, 6, 'R'); c.rect(11, 11, 2, 2, 'K')
-
-
-def _item_brush(c):
-    c.rect(1, 15, 11, 5, 'D'); c.rect(1, 19, 11, 1, 'd')
-    c.rect(11, 9, 11, 11, 'P'); c.rect(11, 18, 11, 2, 'p')
-    for x in range(12, 22, 2):
-        for y in (10, 13, 16):
-            c.put(x, y, 'K')
-
-
-def _item_shampoo_dog(c):
-    _bottle(c, 'M', 'm', 'Y', 'W'); c.pattern(10, 13, ['R.R.R', '.....', '.RRR.', 'RRRRR', '.RRR.'][:5])
-
-
-def _item_shampoo_human(c):
-    _bottle(c, 'P', 'p', 'R', 'W'); c.pattern(10, 13, ['.N.N.', 'NNNNN', '.NYN.', 'NNNNN', '.N.N.'])
-
-
-def _item_chew(c):
-    c.rect(5, 10, 14, 5, 'R'); c.rect(5, 14, 14, 1, 'r'); c.rect(7, 11, 4, 1, 'N')
-    for x, y in ((5, 9), (5, 16), (19, 9), (19, 16)):
-        c.ellipse(x, y, 2.6, 2.6, 'R', shade='r')
-
-
-def _item_ball_squeak(c):
-    c.ellipse(12, 14, 9, 9, 'Y', shade='y', light='w'); c.rect(4, 13, 17, 2, 'R'); c.rect(11, 12, 3, 4, 'R')
-    c.put(12, 13, 'K'); c.pattern(7, 8, ['w', 'w'])
-
-
-def _item_ball_tiny(c):
-    c.ellipse(12, 19, 3.4, 3.4, 'R', shade='r'); c.put(11, 18, 'w')
-
-
-def _item_tag(c):
-    ring_blob(c, 12, 4, 'S'); c.ellipse(12, 15, 8, 7, 'Y', shade='y'); c.rect(8, 13, 8, 1, 'K'); c.rect(9, 16, 6, 1, 'K')
-    c.pattern(11, 18, ['R.R', 'RRR', '.R.'])
-
-
-def _item_bags(c):
-    c.ellipse(12, 14, 9, 8, 'M', shade='m'); c.ellipse(12, 14, 4, 3.5, 'E'); c.ellipse(12, 14, 1.5, 1.5, 'K')
-    c.rect(14, 19, 7, 3, 'W'); c.rect(14, 21, 7, 1, 'E'); c.put(16, 20, 'S'); c.put(19, 20, 'S')
-
-
-def _item_bandana(c):
-    for r in range(15):
-        half = int((14 - r) * 0.75) + 1
-        c.rect(12 - half, 6 + r, 2 * half, 1, 'R')
-    c.rect(2, 6, 20, 2, 'r')
-    for x, y in ((6, 10), (11, 9), (16, 10), (9, 13), (14, 13), (12, 17)):
-        c.put(x, y, 'W'); c.put(x + 1, y, 'W')
-
-
-def _item_bow(c):
-    for x in range(3, 10):
-        h = (x - 2) * 0.9
-        c.rect(x, int(13 - h), 1, int(2 * h) + 1, 'N')
-        c.rect(23 - x, int(13 - h), 1, int(2 * h) + 1, 'N')
-    c.rect(4, 12, 5, 1, 'R'); c.rect(15, 12, 5, 1, 'R')
-    c.ellipse(12, 13, 2.8, 3.4, 'R', shade='r'); c.rect(10, 16, 2, 5, 'N'); c.rect(13, 16, 2, 5, 'N')
-
-
-def _item_sweater(c):
-    c.rect(6, 8, 12, 14, 'S'); c.rect(2, 9, 5, 9, 'S'); c.rect(17, 9, 5, 9, 'S')
-    c.ellipse(12, 8, 3.5, 2, 'E'); c.rect(6, 12, 12, 2, 'W'); c.rect(6, 17, 12, 2, 'W')
-    c.rect(2, 17, 5, 2, 'L'); c.rect(17, 17, 5, 2, 'L'); c.rect(6, 21, 12, 1, 'L'); c.rect(15, 9, 3, 13, 's')
-
-
-def _item_collar(c):
-    for y in range(24):
-        for x in range(24):
-            r = ((x + 0.5 - 12) / 10.5) ** 2 + ((y + 0.5 - 12) / 9) ** 2
-            if 0.5 <= r <= 1.0:
-                c.put(x, y, 'L' if y < 16 else 'l')
-    for x, y in ((6, 6), (12, 3), (18, 6), (21, 12), (3, 12)):
-        c.rect(x, y, 2, 2, 'Y'); c.put(x, y, 'w')
-    c.ellipse(12, 21, 2.5, 2.5, 'Y')
-
-
-def _item_bed(c):
-    c.ellipse(12, 17, 11, 5.5, 'p'); c.ellipse(12, 16, 11, 5, 'P'); c.ellipse(12, 15, 8, 3, 'W'); c.ellipse(12, 15, 5, 1.6, 'E')
-    c.pattern(10, 14, ['R.R', '.R.']); c.put(12, 17, 'p')
-
-
-SHOP_ITEMS = {
-    'toothbrush': (_item_toothbrush, 'Need (vet)'), 'toothpaste': (_item_toothpaste, 'Need (vet)'),
-    'toothpaste_human': (_item_toothpaste_human, 'Look-alike: wrong pick'),
-    'flea': (_item_flea, 'Need (vet)'), 'flea_cat': (_item_flea_cat, 'Look-alike: wrong pick'),
-    'ear': (_item_ear, 'Need (vet)'), 'clippers': (_item_clippers, 'Need (vet)'),
-    'brush': (_item_brush, 'Need (parent)'), 'shampoo_dog': (_item_shampoo_dog, 'Want'),
-    'shampoo_human': (_item_shampoo_human, 'Look-alike: wrong pick'),
-    'chew': (_item_chew, 'Need (parent)'), 'ball_squeak': (_item_ball_squeak, 'Want'),
-    'ball_tiny': (_item_ball_tiny, 'Look-alike: too small'), 'tag': (_item_tag, 'Need (parent)'),
-    'bags': (_item_bags, 'Need (parent)'), 'bandana': (_item_bandana, 'Want'), 'bow': (_item_bow, 'Want'),
-    'sweater': (_item_sweater, 'Want'), 'collar': (_item_collar, 'Want'), 'bed': (_item_bed, 'Want'),
-}
-
-
-def shop_item(name):
-    c = Canvas(24, 24)
-    SHOP_ITEMS[name][0](c)
-    return c.outline()
-
-
-# ---- the store rooms (320x180 world)
-STORE = dict(boards=(112, 156), unit=(120, 288))
-STORE_AISLES = (('Health', (('toothbrush', 'toothpaste', 'toothpaste_human'), ('flea', 'flea_cat', 'ear'))),
-                ('Grooming', (('clippers', 'brush'), ('shampoo_dog', 'shampoo_human'))),
-                ('Play & Walk', (('chew', 'ball_squeak', 'ball_tiny'), ('tag', 'bags'))),
-                ('Home & Style', (('bandana', 'bow', 'sweater'), ('collar', 'bed'))))
-
-
-def store_room(c):
-    c.rect(0, 0, 320, 140, 'L')
-    for y in range(6, 130, 12):
-        for x in range(4 + (6 if (y // 12) % 2 else 0), 320, 12):
-            c.put(x, y, 'l')
-    c.rect(0, 136, 320, 4, 'P'); c.rect(0, 136, 320, 1, 'K')
-    c.rect(0, 140, 320, 40, 'E'); c.rect(0, 140, 320, 1, 'K')
-    for i, y in enumerate(range(141, 180, 10)):
-        for x in range(10 if i % 2 else 0, 320, 20):
-            c.rect(x, y, 10, 10, 'W')
-
-
-def draw_store():
-    c = Canvas(320, 180)
-    store_room(c)
-    x0, x1 = STORE['unit']
-    box(c, x0, 76, x1 - x0, 98, 'P'); c.rect(x0 + 1, 77, x1 - x0 - 2, 3, 'p')                      # back panel
-    box(c, x0 - 3, 72, x1 - x0 + 6, 6, 'D'); c.rect(x0 - 2, 76, x1 - x0 + 4, 1, 'd')                # top cap
-    for post in (x0, x1 - 4):
-        box(c, post, 76, 4, 98, 'D')
-    for bt in STORE['boards']:
-        c.rect(x0 + 4, bt, x1 - x0 - 8, 3, 'D'); c.rect(x0 + 4, bt, x1 - x0 - 8, 1, 'K')           # board top
-        box(c, x0 + 3, bt + 3, x1 - x0 - 6, 8, 'E'); c.rect(x0 + 4, bt + 4, x1 - x0 - 8, 1, 'w')   # board lip: the price goes here
-        c.rect(x0 + 4, bt + 11, x1 - x0 - 8, 2, 'p')                                                # shadow under it
-    box(c, x0, 168, x1 - x0, 6, 'd')                                                               # kick plate
-    c.rect(144, 40, 1, 12, 'K'); c.rect(264, 40, 1, 12, 'K')                                       # sign strings
-    box(c, 130, 50, 148, 22, 'W'); c.rect(131, 68, 146, 3, 'E')                                    # aisle sign (the name is text)
-    return c
-
-
-def draw_till():
-    c = Canvas(320, 180)
-    store_room(c)
-    box(c, 214, 18, 90, 60, 'W'); box(c, 218, 22, 82, 52, 'S'); c.rect(258, 22, 1, 52, 'K'); c.rect(218, 48, 82, 1, 'K')   # window
-    c.ellipse(236, 36, 8, 3, 'W'); blob(c, 282, 36, 6, 6, 'Y', 'y')
-    box(c, 40, 112, 240, 8, 'E'); c.rect(41, 113, 238, 1, 'w')                                     # counter top (items stand on it)
-    box(c, 44, 120, 232, 52, 'P'); c.rect(45, 121, 230, 2, 'p')
-    for dx in (52, 124, 196):
-        box(c, dx, 128, 64, 36, 'P'); c.rect(dx + 1, 128, 62, 2, 'p'); c.rect(dx + 26, 134, 12, 3, 'Y')
-    box(c, 226, 86, 44, 26, 'S'); box(c, 230, 90, 20, 10, 'M'); c.rect(232, 92, 6, 1, 'w')        # till
-    for kx in range(254, 266, 4):
-        for ky in (90, 96):
-            c.rect(kx, ky, 3, 3, 'W')
-    box(c, 236, 104, 24, 6, 's')
-    box(c, 62, 100, 16, 12, 'S'); c.rect(64, 96, 12, 4, 'R'); c.rect(66, 93, 8, 3, 'W')          # a jar of treats
-    return c
-
-
-# ---- UI bits
-def coin_jar(level):
-    """level 0..5: how much of the budget is left."""
-    c = Canvas(12, 14)
-    c.rect(2, 1, 8, 3, 'R'); c.rect(3, 2, 6, 1, 'r')                                             # lid with a slot
-    c.rect(1, 4, 10, 9, 'S')
-    pile = round(level * 1.6)
-    if pile:
-        c.rect(2, 12 - pile + 1, 8, pile, 'Y'); c.rect(2, 12 - pile + 1, 8, 1, 'w'); c.rect(2, 12, 8, 1, 'y')
-        for i in range(pile // 2):
-            c.put(3 + i * 3, 12 - pile + 3, 'y')
-    c.rect(2, 5, 1, 4, 'w')
-    return c.outline()
-
-
-def draw_coin(size):
-    c = Canvas(size, size)
-    r = size / 2 - 1
-    c.ellipse(size / 2, size / 2, r, r, 'Y', shade='y')
-    if size >= 12:
-        c.rect(size // 2 - 1, 5, 2, size - 10, 'y'); c.rect(4, 4, 2, 2, 'w')
+# ---------------------------------------------------------------- group 9: story panels (the kid and parent in full)
+def kid(pose='stand', step=0):
+    """The player's kid, 40x64, facing right. Poses: stand, worried, hug (arms drawn by the panel, over the puppy), pj (arms up,
+    pyjamas, no cap), sit (on the floor, legs forward, laughing), leash (front arm forward holding a leash; step 0-3 walks)."""
+    c = Canvas(40, 64)
+    o = 4                                                                    # spare rows on top for raised arms
+    pj, sit = pose == 'pj', pose == 'sit'
+    shirt, shade = ('L', 'l') if pj else ('Y', 'y')
+    if pj:
+        c.ellipse(15, 9 + o, 9, 8, 'H')                                      # bed hair
     else:
-        c.put(2, 2, 'w')
+        c.rect(6, 9 + o, 4, 8, 'H')                                          # hair under the cap
+    c.ellipse(15, 13 + o, 8, 8, 'F')                                         # face
+    if pj:
+        c.rect(8, 4 + o, 14, 4, 'H'); c.rect(7, 8 + o, 3, 8, 'H'); c.pattern(16, 2 + o, ['.H.H', 'HH.H'])   # messy fringe
+    else:
+        c.ellipse(14, 7 + o, 9, 5, 'M'); c.rect(5, 7 + o, 18, 3, 'M'); c.rect(18, 9 + o, 9, 2, 'M'); c.rect(6, 10 + o, 17, 1, 'm')
+        c.put(14, 2 + o, 'R')                                                # button on top of the cap
+    c.rect(10, 13 + o, 2, 3, 'f')                                            # ear
+    c.put(23, 15 + o, 'f')                                                   # nose
+    happy = pose in ('hug', 'sit')
+    if happy:
+        c.pattern(18, 13 + o, ['.kk.', 'k..k'])                              # ^ eyes
+        c.pattern(18, 18 + o, ['kkk', 'kNk', '.k.'])                         # open smile
+    elif pose == 'worried':
+        c.rect(19, 12 + o, 2, 3, 'k'); c.put(20, 12 + o, 'w'); c.pattern(18, 10 + o, ['..hh', 'hh..'])   # worried brow
+        c.pattern(19, 19 + o, ['.k.', 'k.k'])
+    elif pj:
+        c.rect(18, 13 + o, 3, 1, 'k'); c.pattern(18, 18 + o, ['kkk', 'kNk', 'kkk'])   # sleepy eyes, a big yawn
+    else:
+        c.rect(19, 12 + o, 2, 3, 'k'); c.put(20, 12 + o, 'w'); c.pattern(19, 18 + o, ['k.k', '.k.'])
+    c.rect(19, 17 + o, 2, 1, 'N')                                            # blush
+    c.rect(13, 21 + o, 4, 3, 'f')                                            # neck
+    c.ellipse(15, 27 + o, 9, 4, shirt); c.rect(6, 27 + o, 18, 14, shirt); c.rect(6, 38 + o, 18, 3, shade)
+    if pj:
+        for x in range(8, 24, 4):
+            c.rect(x, 28 + o, 1, 12, shade)
+    else:
+        c.rect(6, 32 + o, 18, 2, 'R')                                        # stripe on the T-shirt
+    if pj:                                                                   # stretching, arms up
+        c.rect(3, 0, 4, 28 + o, shirt); c.rect(3, 0, 4, 3, 'F'); c.rect(23, 0, 4, 28 + o, shirt); c.rect(23, 0, 4, 3, 'F')
+    elif pose == 'worried':                                                  # a hand by the mouth
+        c.rect(3, 27 + o, 4, 4, shirt); c.rect(3, 31 + o, 4, 11, 'F')
+        c.rect(23, 27 + o, 4, 4, shirt); c.rect(22, 21 + o, 4, 7, 'F')
+    elif pose == 'leash':                                                    # front arm held out, the hand closed round the leash
+        c.rect(3, 27 + o, 4, 4, shirt); c.rect(3 - (step == 1) + (step == 3), 31 + o, 4, 10, 'F')
+        c.rect(23, 27 + o, 6, 4, shirt); c.rect(29, 28 + o, 5, 3, 'F'); c.rect(33, 27 + o, 3, 5, 'F')
+    elif pose != 'hug':
+        c.rect(3, 27 + o, 4, 4, shirt); c.rect(3, 31 + o, 4, 11, 'F')
+        c.rect(23, 27 + o, 4, 4, shirt); c.rect(23, 31 + o, 4, 11, 'F')
+    if pose == 'leash' and step in (1, 3):                                  # mid-stride: one leg forward, one back
+        f, b = (3, -3) if step == 1 else (-3, 3)
+        c.rect(8, 41 + o, 14, 3, 'S'); c.rect(8 + b, 44 + o, 6, 10, 'S'); c.rect(16 + f, 44 + o, 6, 10, 'S')
+        c.rect(7 + b, 54 + o, 8, 3, 'R'); c.rect(16 + f, 54 + o, 9, 3, 'R'); c.rect(7 + b, 56 + o, 8, 1, 'W'); c.rect(16 + f, 56 + o, 9, 1, 'W')
+    elif sit:                                                                  # legs out in front
+        c.rect(8, 41 + o, 26, 6, 'S'); c.rect(8, 46 + o, 26, 1, 's'); c.rect(34, 38 + o, 3, 10, 'R'); c.rect(36, 38 + o, 1, 10, 'W')
+    else:
+        c.rect(8, 41 + o, 14, 3, 'S'); c.rect(8, 44 + o, 6, 10, 'S'); c.rect(16, 44 + o, 6, 10, 'S'); c.rect(12, 44 + o, 2, 10, 's')
+        c.rect(7, 54 + o, 8, 3, 'R'); c.rect(16, 54 + o, 9, 3, 'R'); c.rect(7, 56 + o, 8, 1, 'W'); c.rect(16, 56 + o, 9, 1, 'W')
     return c.outline()
 
 
-def draw_basket(items):
-    c = Canvas(30, 24)
-    if items:
-        for x, y, col in ((6, 6, 'R'), (12, 3, 'Y'), (18, 6, 'M'), (9, 8, 'S'), (15, 8, 'N')):
-            c.ellipse(x + 3, y + 3, 3.5, 3.5, col)
-    c.rect(2, 10, 26, 2, 'd')
-    c.rect(3, 12, 24, 10, 'D')
-    for y in (14, 18):
-        c.rect(3, y, 24, 1, 'd')
-    for x in range(5, 27, 4):
-        c.rect(x, 12, 1, 10, 'd')
-    line(c, 3, 11, 8, 3, 'd', 1); line(c, 27, 11, 22, 3, 'd', 1); c.rect(8, 2, 14, 1, 'd')        # handle
+def kid_arms():
+    """The cradling arm (sleeve, forearm and hand) that the held puppy sits on."""
+    c = Canvas(30, 8)
+    c.rect(1, 1, 6, 5, 'Y'); c.rect(7, 2, 18, 4, 'F'); c.rect(24, 1, 4, 5, 'F')
     return c.outline()
 
 
-def draw_arrow(direction):
-    c = Canvas(12, 16)
-    rows = ['....YY', '...YYY', '..YYYy', '.YYYYy', 'YYYYYy', 'YYYYYy', '.YYYYy', '..YYYy', '...YYy', '....Yy']
-    c.pattern(2, 3, rows)
-    c.rect(4, 4, 1, 2, 'w')
-    return (c.flipped() if direction == 'right' else c).outline()
+def kid_hand():
+    c = Canvas(7, 7)
+    c.rect(1, 1, 5, 4, 'F'); c.rect(1, 5, 2, 1, 'F')
+    return c.outline()
 
 
-# ---- group 7 export
-def group7():
-    out = {}
-    out['assets/bg/store_aisle.png'] = ([draw_store()], None, {'section': 'bg', 'anim': 'store aisle'})
-    out['assets/bg/store_till.png'] = ([draw_till()], None, {'section': 'bg', 'anim': 'store till'})
-    for name, (_, kind) in SHOP_ITEMS.items():
-        out[f'assets/sprites/shop_{name}.png'] = ([shop_item(name)], None, {'section': 'Shelf items (24x24, shown at 2x)', 'anim': name.replace('_', ' '), 'note': kind})
-    U = 'assets/ui/'
-    out[U + 'coin_jar.png'] = ([coin_jar(k) for k in range(6)], None, {'section': 'Budget and basket', 'anim': 'coin jar', 'note': 'Six frames: the coins left in the budget'})
-    out[U + 'coin_small.png'] = ([draw_coin(8)], None, {'section': 'Budget and basket', 'anim': 'coin (price)', 'note': 'Next to each price'})
-    out[U + 'icon_coin.png'] = ([draw_coin(16)], None, {'section': 'Budget and basket', 'anim': 'coin icon', 'note': 'Smart shopping skill, task card'})
-    out[U + 'basket.png'] = ([draw_basket(False), draw_basket(True)], None, {'section': 'Budget and basket', 'anim': 'basket', 'note': 'Empty, then with items'})
-    out[U + 'arrow_left.png'] = ([draw_arrow('left')], None, {'section': 'Budget and basket', 'anim': 'aisle arrow left', 'note': 'Next to the aisle sign'})
-    out[U + 'arrow_right.png'] = ([draw_arrow('right')], None, {'section': 'Budget and basket', 'anim': 'aisle arrow right', 'note': 'Next to the aisle sign'})
+PARENT_H = 66                                                                 # the parent's height (art px); the kid is 61
+
+
+def parent_body(pose='stand'):
+    """The parent full length, 28x66, facing right: a head taller than the kid. Matches the bust: brown hair, peach sweater.
+    pose 'wave' raises the right arm."""
+    c = Canvas(28, PARENT_H)
+    c.rect(4, 6, 4, 13, 'H')                                                 # hair at the back
+    c.ellipse(14, 11, 7, 8, 'F')
+    c.ellipse(13, 6, 9, 5, 'H'); c.rect(10, 4, 10, 3, 'H'); c.rect(19, 6, 2, 3, 'H')
+    c.rect(8, 11, 2, 3, 'f'); c.put(21, 12, 'f')
+    c.rect(16, 9, 2, 3, 'k'); c.put(17, 9, 'w'); c.rect(16, 14, 2, 1, 'N'); c.pattern(15, 16, ['k..k', '.kk.'])
+    c.rect(11, 18, 5, 3, 'f')
+    c.ellipse(14, 24, 9, 4, 'P'); c.rect(5, 24, 18, 19, 'P'); c.rect(5, 40, 18, 3, 'p')
+    c.pattern(10, 21, ['WWWWWWW', '.WWWWW.'])
+    c.rect(2, 24, 4, 17, 'P'); c.rect(2, 41, 4, 3, 'F')
+    if pose == 'wave':
+        c.rect(22, 9, 4, 16, 'P'); c.rect(22, 6, 4, 3, 'F')
+    else:
+        c.rect(22, 24, 4, 17, 'P'); c.rect(22, 41, 4, 3, 'F')
+    c.rect(7, 43, 6, 18, 'd'); c.rect(15, 43, 6, 18, 'd')
+    c.rect(6, 61, 8, 3, 'h'); c.rect(15, 61, 8, 3, 'h')
+    return c.outline()
+
+
+def shift_up(c, dy):
+    """Raise a scene by dy rows so its floor sits inside the visible band (the cutscene bars hide y<15 and y>146)."""
+    out = Canvas(c.w, c.h)
+    out.px = c.px[dy:] + [list(c.px[-1]) for _ in range(dy)]
     return out
 
 
-# ---- group 7 preview mock-ups
-STORE_LIST = ('Dog toothbrush', 'Dog toothpaste', 'Flea treatment (dog)', 'Nail clippers', 'Ear cleaner (dog)',
-              'Brush', 'ID tag', 'Chew toy', 'Poop bags')
+def recolor(cv, mapping):
+    out = Canvas(cv.w, cv.h)
+    out.px = [[mapping.get(k, k) for k in row] for row in cv.px]
+    return out
 
 
-def store_paper(x, y, labels, ticked=0):
-    items = [('assets/ui/paper_top.png', x, y, 2), ('@text', x + 28, y + 14, 150, 'Shopping list', 14, '#5A3E36', 'left')]
-    for i, lab in enumerate(labels):
-        ry = y + 36 + i * PAPER_ROW * 2
-        items += [('assets/ui/paper_row.png', x, ry, 2), ('assets/ui/list_tick.png' if i < ticked else 'assets/ui/list_box.png', x + 26, ry + 3, 2),
-                  ('@text', x + 46, ry + 3, 150, lab, 13, '#5A3E36', 'left')]
-    items.append(('assets/ui/paper_bottom.png', x, y + 36 + len(labels) * PAPER_ROW * 2, 2))
-    return items
+OTHER_PUPS = ({'A': 'W', 'B': 'E', 'C': 'w'}, {'A': 'H', 'B': 'h', 'C': 'D'})   # the rescue centre's other puppies: white, dark brown
 
 
-def store_hud(coins_left):
-    """The level 2 HUD plus the coin jar card (between the name and the task card)."""
-    ci = panel(18, 18, 'W', ring='E')
-    items = l2_hud(44, 'Biscuit', 'toothbrush', 'Shopping  2 of 2')
-    items += [('@canvas', nine(ci, 60, 16, 6), 282, 6, 2), ('assets/ui/coin_jar.png', 290, 8, 2),
-              ('@text', 324, 12, 48, str(coins_left), 16, '#5A3E36', 'left')]
-    return items
+def prod_toothpaste_human():
+    c = Canvas(18, 8)
+    c.rect(1, 2, 13, 4, 'W'); c.rect(3, 2, 2, 4, 'S'); c.rect(7, 2, 2, 4, 'M'); c.rect(11, 2, 2, 4, 'S'); c.rect(14, 3, 3, 2, 'R')
+    return c.outline()
 
 
-def aisle_items(aisle, taken=()):
-    """Shelf sprites + price tags for one aisle, as mock-up layers."""
-    prices = {'toothbrush': 4, 'toothpaste': 6, 'toothpaste_human': 4, 'flea': 12, 'flea_cat': 10, 'ear': 7, 'clippers': 7, 'brush': 5,
-              'shampoo_dog': 6, 'shampoo_human': 5, 'chew': 6, 'ball_squeak': 5, 'ball_tiny': 2, 'tag': 4, 'bags': 3,
-              'bandana': 4, 'bow': 3, 'sweater': 9, 'collar': 8, 'bed': 12}
-    layers = []
-    for row, ids in enumerate(STORE_AISLES[aisle][1]):
-        xs = {3: (146, 204, 262), 2: (175, 233)}[len(ids)]
-        for x, id_ in zip(xs, ids):
-            bt = STORE['boards'][row]
-            if id_ not in taken:
-                layers.append((f'assets/sprites/shop_{id_}.png', (x - 12) * 2, (bt - 23) * 2, 2))
-            layers += [('assets/ui/coin_small.png', (x - 11) * 2, (bt + 4) * 2, 2),
-                       ('@text', (x - 1) * 2, (bt + 4) * 2 + 1, 40, str(prices[id_]), 13, '#5A3E36', 'left')]
-    return layers
+def prod_shampoo_human():
+    c = Canvas(10, 17)
+    c.rect(1, 4, 8, 12, 'N'); c.rect(3, 1, 4, 3, 'W'); c.rect(2, 7, 6, 5, 'W'); c.pattern(3, 8, ['.Y.', 'YRY', '.Y.']); c.rect(7, 4, 1, 12, 'p')
+    return c.outline()
 
 
-def store_mockups():
+def prod_flea_cat():
+    c = Canvas(13, 12)
+    c.rect(1, 1, 11, 10, 'L'); c.rect(2, 3, 9, 6, 'W'); c.pattern(4, 3, ['k...k', 'kk.kk', 'kkkkk', '.kkk.'])
+    return c.outline()
+
+
+def prod_ball_tiny():
+    c = Canvas(7, 7)
+    c.ellipse(3.5, 3.5, 2.6, 2.6, 'Y', shade='y'); c.put(2, 2, 'w')
+    return c.outline()
+
+
+def floor_planks(c, y0, base='D', line='d'):
+    c.rect(0, y0, c.w, c.h - y0, base); c.rect(0, y0, c.w, 1, 'K'); c.rect(0, y0 + 1, c.w, 2, line)
+    for i, y in enumerate(range(y0 + 8, c.h, 8)):
+        c.rect(0, y, c.w, 1, line)
+        for x in range((i * 19) % 44, c.w, 44):
+            c.rect(x, y - 7, 1, 7, line)
+
+
+def bedroom(night=False):
+    c = Canvas(320, 180)
+    wall, stripe = ('l', 'V') if night else ('S', 's')            # sky blue by day, so the lavender pyjamas stand out
+    c.rect(0, 0, 320, 128, wall)
+    for x in range(6, 320, 14):
+        c.rect(x, 0, 1, 124, stripe)
+    c.rect(0, 123, 320, 5, 'W' if not night else 'E'); c.rect(0, 123, 320, 1, 'K')
+    floor_planks(c, 128, 'D' if not night else 'd', 'd' if not night else 'h')
+    box(c, 96, 28, 64, 52, 'W'); box(c, 100, 32, 56, 44, 'v' if night else 'S')   # window
+    if night:
+        c.ellipse(140, 46, 7, 7, 'Y'); c.ellipse(144, 43, 6, 6, 'v')
+        for sx, sy in ((108, 40), (122, 58), (150, 66), (114, 68)):
+            c.put(sx, sy, 'W')
+    else:
+        c.rect(100, 58, 56, 18, 'Y'); c.rect(100, 52, 56, 6, 'P')               # sunrise
+        blob(c, 128, 70, 9, 9, 'O', 'o'); c.ellipse(128, 80, 40, 7, 'm')
+        c.rect(100, 76, 56, 0, 'm')
+    c.rect(127, 32, 2, 44, 'K'); c.rect(100, 53, 56, 1, 'K')
+    for cx0 in (88, 160):                                                     # curtains
+        box(c, cx0, 26, 10, 60, 'R'); c.rect(cx0 + 4, 28, 1, 56, 'r')
+    c.rect(84, 24, 90, 3, 'd'); c.rect(84, 24, 90, 1, 'K')
+    box(c, 182, 32, 42, 46, 'W'); c.rect(183, 33, 40, 9, 'R')                  # calendar: PUPPY DAY
+    pixel_text(c, 186, 35, 'PUPPY DAY', 'W')
+    for j in range(4):
+        for i in range(5):
+            c.rect(188 + i * 7, 46 + j * 7, 3, 3, 'E')
+    for a in range(0, 360, 12):                                              # the circled day
+        c.put(round(209 + 5 * math.cos(math.radians(a))), round(61 + 4 * math.sin(math.radians(a))), 'R')
+    # the bed (left), pillow, blanket
+    box(c, 6, 66, 10, 64, 'd'); box(c, 6, 100, 90, 30, 'D'); c.rect(7, 124, 88, 4, 'd')
+    box(c, 16, 90, 26, 12, 'W')
+    box(c, 92, 108, 30, 22, 'D'); c.rect(93, 114, 28, 1, 'd'); c.rect(105, 118, 4, 2, 'Y')   # nightstand
+    if night:
+        box(c, 100, 98, 12, 10, 'E'); c.rect(104, 92, 4, 6, 'd')                 # lamp, off
+    else:
+        blob(c, 107, 102, 6, 5, 'Y', 'K'); c.rect(103, 99, 1, 2, 'K'); c.rect(110, 99, 1, 2, 'K')   # alarm clock
+        c.rect(107, 100, 1, 3, 'K'); c.rect(107, 102, 3, 1, 'K')
+    # door (right)
+    box(c, 248, 36, 50, 92, 'W')
+    if night:
+        box(c, 252, 40, 42, 88, 'D'); c.rect(286, 84, 3, 3, 'Y')
+    else:
+        box(c, 252, 40, 42, 88, 'E'); c.rect(253, 110, 40, 17, 'P'); c.rect(286, 40, 8, 88, 'D'); c.rect(286, 40, 1, 88, 'K')
+    return c
+
+
+def draw_panel_bedroom():
+    """Saturday morning: the kid sits up in bed and stretches; PUPPY DAY is circled; the parent leans in at the door."""
+    c = bedroom()
+    paste(c, kid('pj'), 26, 52)
+    box(c, 14, 99, 82, 25, 'M')                                               # blanket over the legs
+    for x in range(20, 92, 8):
+        c.pattern(x, 106, ['.Y.', 'YYY', '.Y.'])
+    c.rect(15, 120, 80, 3, 'm')
+    paste(c, parent_body('wave').flipped(), 259, 128 - PARENT_H)
+    blob(c, 186, 136, 5, 5, 'R', 'K', light='N'); c.rect(181, 135, 11, 2, 'W')          # a ball on the floor
+    c.pattern(56, 46, ['..Y..', '.YwY.', '..Y..']); c.pattern(84, 58, ['.Y.', 'YwY', '.Y.'])   # excitement
+    return c
+
+
+def draw_panel_car_there():
+    return draw_panel_car(puppy=False)
+
+
+def rescue_room(c):
+    c.rect(0, 0, 320, 120, 'M')
+    for y in range(8, 70, 14):
+        for x in range(8 + (7 if (y // 14) % 2 else 0), 320, 14):
+            c.pattern(x - 1, y - 1, ['.m.', 'mmm', '.m.'])
+    c.rect(0, 70, 320, 50, 'm'); c.rect(0, 70, 320, 1, 'K'); c.rect(0, 71, 320, 2, 'M')
+    c.rect(0, 120, 320, 60, 'E'); c.rect(0, 120, 320, 1, 'K')
+    for i, y in enumerate(range(120, 180, 10)):
+        c.rect(0, y, 320, 1, 'P')
+        for x in range(12 if i % 2 else 0, 320, 24):
+            c.rect(x, y, 1, 10, 'P')
+    for hx, hy in ((30, 30), (290, 34), (60, 52), (260, 56)):                 # painted hearts
+        c.pattern(hx, hy, ['.R.R.', 'RRRRR', '.RRR.', '..R..'])
+
+
+def pen(c, x, w):
+    box(c, x, 64, w, 58, 'W'); c.rect(x + 1, 110, w - 2, 11, 'T')              # kennel back + straw
+    for px in range(x + 2, x + w - 2, 4):
+        c.put(px, 112 + px % 3, 't')
+    c.rect(x, 82, w, 2, 'K'); c.rect(x, 84, w, 1, 'E')                          # top rail
+    for bx in range(x + 3, x + w - 1, 7):                                     # bars
+        c.rect(bx, 84, 1, 38, 'K')
+
+
+def draw_panel_rescue():
+    """The rescue centre: two pups nap in their pens; yours is at the front, wagging."""
+    c = Canvas(320, 180)
+    rescue_room(c)
+    pen(c, 22, 82); pen(c, 216, 82)
+    sleepy = puppy_anims()['sad'][1]
+    paste(c, recolor(sleepy, OTHER_PUPS[0]), 46, 120 - 30)
+    paste(c, recolor(sleepy, OTHER_PUPS[1]), 244, 120 - 30)
+    for zx in (70, 268):
+        pixel_text(c, zx, 78, 'Z', 'l'); pixel_text(c, zx + 5, 72, 'Z', 'l')
+    box(c, 112, 64, 96, 58, 'W'); c.rect(113, 110, 94, 11, 'T')               # middle pen, gate open
+    box(c, 126, 46, 68, 14, 'Y'); pixel_text(c, 140, 50, 'ADOPT ME', 'K')
+    for bx in range(198, 207, 7):
+        c.rect(bx, 84, 1, 38, 'K')
+    c.rect(198, 82, 10, 2, 'K')
+    paste(c, puppy_anims()['wag'][2], 144, 138 - 30)
+    c.pattern(156, 92, ['.R.R.', 'RRRRR', '.RRR.', '..R..'])
+    for x, y in ((140, 104), (186, 102)):
+        c.pattern(x, y, ['.w.', 'www', '.w.'])
+    paste(c, kid('stand'), 68, 140 - 61)
+    return c
+
+
+def draw_panel_chosen():
+    """The puppy has picked you: a big hug, and the parent smiles."""
+    c = Canvas(320, 180)
+    rescue_room(c)
+    pen(c, 22, 82)
+    paste(c, recolor(puppy_anims()['sad'][1], OTHER_PUPS[0]), 46, 120 - 30)
+    paste(c, parent_body().flipped(), 200, 140 - PARENT_H)
+    paste(c, kid('hug'), 126, 140 - 61)
+    pup = draw_dog(PUPPY, pose='sit', tail=60, eyes='happy', mouth='open')      # sitting up, cradled on the kid's forearm
+    paste(c, pup, 136, 120 - 30)
+    paste(c, kid_arms(), 128, 117)
+    paste(c, kid_hand(), 141, 103)                                             # the other hand on the puppy's back
+    for hx, hy in ((150, 64), (176, 52), (132, 54)):
+        c.pattern(hx, hy, ['.R.R.', 'RRRRR', '.RRR.', '..R..'])
+    return c
+
+
+def living_afternoon():
+    c = draw_room()
+    for y in range(140, 180):                                                 # warm patches of sun on the floor
+        for x in range(320):
+            u = x - (y - 140) * 0.8
+            if (60 <= u < 84 or 96 <= u < 116) and c.px[y][x] in ('D', 'd'):
+                c.px[y][x] = 'T' if c.px[y][x] == 'D' else 'D'
+    for y in range(34, 140):                                                  # and through the window onto the wall
+        for x in range(320):
+            u = x - (y - 34) * 0.8
+            if 140 <= u < 150 and c.px[y][x] in ('W', 'E'):
+                c.px[y][x] = 'Y' if c.px[y][x] == 'W' else 'y'
+    return c
+
+
+def draw_panel_afternoon():
+    """Later that afternoon: the puppy chases a ball across the rug, the kid laughs."""
+    c = living_afternoon()
+    paste(c, puppy_anims()['walk'][0], 140, 166 - 30)
+    blob(c, 186, 146, 5, 5, 'R', 'K', light='N'); c.rect(181, 145, 11, 2, 'W')
+    for i, (x, y) in enumerate(((176, 140), (170, 136), (165, 134))):           # the ball's bounce trail
+        c.put(x, y, 'W')
+    for my in (150, 156):
+        c.rect(124, my, 10, 1, 'W')
+    paste(c, kid('sit').flipped(), 226, 166 - 59)
+    return shift_up(c, 26)
+
+
+def draw_panel_afternoon_sniff():
+    """The ball has rolled away, and the puppy has its nose down, sniffing the rug."""
+    c = living_afternoon()
+    blob(c, 234, 136, 5, 5, 'R', 'K', light='N'); c.rect(229, 135, 11, 2, 'W')
+    paste(c, puppy_anims()['sniff'][0], 150, 166 - 30)
+    paste(c, kid('sit').flipped(), 226, 166 - 59)
+    paste(c, icon('question'), 240, 94)
+    for x, y in ((146, 160), (186, 162)):                                    # sniff, sniff
+        c.pattern(x, y, ['W.W', '.W.'])
+    return shift_up(c, 26)
+
+
+def draw_panel_night():
+    """That night: the kid asleep, the puppy curled up in its basket by the bed, the moon in the window."""
+    c = bedroom(night=True)
+    box(c, 16, 90, 26, 12, 'W')
+    c.ellipse(32, 92, 8, 7, 'F'); c.ellipse(29, 87, 8, 5, 'H'); c.rect(23, 87, 3, 8, 'H')   # sleeping head on the pillow
+    c.rect(34, 92, 3, 1, 'k'); c.put(36, 95, 'N'); ring(c, 31, 91, 9, 8, ('F', 'H'))
+    box(c, 14, 98, 82, 26, 'M'); c.rect(15, 120, 80, 3, 'm')
+    for x in range(20, 92, 8):
+        c.pattern(x, 106, ['.Y.', 'YYY', '.Y.'])
+    pixel_text(c, 48, 76, 'Z', 'W'); pixel_text(c, 54, 70, 'Z', 'W'); pixel_text(c, 61, 63, 'Z', 'W')
+    for y in range(128, 146):                                                 # moonlight on the floor
+        for x in range(320):
+            u = x - (y - 128) * 1.2
+            if 150 <= u < 190:
+                c.put(x, y, 'l')
+    c.ellipse(152, 140, 26, 6, 'd'); c.ellipse(152, 138, 22, 4, 'D'); c.ellipse(152, 138, 18, 3, 'R')   # basket + cushion
+    paste(c, puppy_anims()['sad'][1], 136, 140 - 30)
+    pixel_text(c, 168, 112, 'Z', 'W'); pixel_text(c, 173, 106, 'Z', 'W')
+    return c
+
+
+def scratching_dog():
+    """The young dog sitting, scratching behind its ear with a back paw."""
+    dog = draw_dog(YOUNG, pose='sit', eyes='squint', head=(0, 1), tail=20)
+    c = Canvas(40, 40)
+    paste(c, dog, 0, 0)
+    thick_line(c, 13, 33, 21, 17, 'K', 4)
+    thick_line(c, 13, 33, 21, 17, 'B', 2)
+    c.rect(19, 14, 4, 4, 'K'); c.rect(20, 15, 2, 2, 'C')
+    return c
+
+
+def draw_panel_scratching():
+    """One morning: the young dog keeps scratching; the kid looks worried."""
+    c = draw_room()
+    paste(c, scratching_dog(), 136, 165 - 38)
+    for x, y in ((164, 124), (170, 132), (160, 118)):                        # scratch-scratch lines
+        c.rect(x, y, 4, 1, 'K')
+    for x, y in ((150, 112), (176, 116)):                                     # tiny hopping specks
+        c.put(x, y, 'k'); c.put(x + 1, y - 2, 'K')
+    paste(c, kid('worried').flipped(), 206, 166 - 61)
+    return shift_up(c, 26)
+
+
+def bathroom(c):
+    c.rect(0, 0, 320, 128, 'S')
+    for y in range(0, 128, 8):
+        c.rect(0, y, 320, 1, 's')
+        for x in range(8 if (y // 8) % 2 else 0, 320, 16):
+            c.rect(x, y, 1, 8, 's')
+    c.rect(0, 128, 320, 52, 'W'); c.rect(0, 128, 320, 1, 'K')
+    for y in range(128, 180, 9):
+        for x in range(0 if (y // 9) % 2 else 9, 320, 18):
+            c.rect(x, y, 9, 9, 'E')
+
+
+def draw_panel_grooming_bag():
+    """The parent packs the grooming bag from the bathroom: our own toothpaste and shampoo, cat flea drops, a tiny ball."""
+    c = Canvas(320, 180)
+    bathroom(c)
+    box(c, 244, 18, 44, 34, 'W'); box(c, 248, 22, 36, 26, 'S'); c.rect(250, 24, 8, 1, 'w')   # mirror
+    box(c, 214, 72, 82, 8, 'E'); box(c, 220, 80, 70, 48, 'W')                # counter + cabinet
+    box(c, 222, 82, 32, 44, 'E'); c.rect(250, 102, 2, 4, 'Y')
+    box(c, 256, 82, 32, 44, 'W'); c.rect(258, 102, 2, 4, 'Y')
+    box(c, 0, 92, 40, 36, 'W'); c.rect(1, 96, 38, 4, 'E')                    # bathtub edge, left
+    for bx, by in ((8, 88), (18, 84), (30, 88)):
+        c.ellipse(bx, by, 4, 3, 'W'); c.put(bx - 1, by - 1, 'w')
+    # the bag on the counter, the products going in
+    c.pattern(222, 40, ['..KKKKKKKKKKKKKKKKKKKKKKKKKKKKK....', '.K.............................K...', 'K...............................K..'])
+    paste(c, prod_shampoo_human(), 226, 38)                                    # going into the bag, sitting on the counter
+    paste(c, prod_toothpaste_human(), 238, 46)
+    box(c, 218, 52, 40, 21, 'R'); c.rect(219, 65, 38, 7, 'r')
+    paste(c, prod_flea_cat(), 264, 60)
+    paste(c, prod_ball_tiny(), 282, 65)
+    paste(c, parent_body(), 186, 128 - PARENT_H)
+    paste(c, young_anims_l2()['sit'][0], 60, 128 - 38)
+    paste(c, icon('question'), 74, 70)
+    return c
+
+
+def draw_panel_vet_chart():
+    """Inside the clinic: the vet holds up the HEALTHY DOG chart; the grooming bag waits by the table."""
+    c = draw_clinic()
+    tt = CLINIC['table_top']
+    paste(c, young_anims_l2()['nervous'][0], CLINIC['dog_x'] - 20, tt - 3 - 39)
+    box(c, 186, 40, 50, 62, 'W'); c.rect(187, 41, 48, 10, 'M')                 # the chart on an easel
+    pixel_text(c, 191, 44, 'HEALTHY', 'K')
+    paste(c, young_anims()['idle'][0], 191, 56)
+    for x, y in ((190, 92), (226, 92)):
+        c.pattern(x, y, ['...M', 'M.MM', '.MM.'])
+    c.rect(196, 102, 3, 64, 'd'); c.rect(224, 102, 3, 64, 'd')
+    paste(c, draw_vet_body(), CLINIC['vet_x'] - 18, 86)
+    box(c, 54, 136, 30, 20, 'R'); c.rect(55, 150, 28, 5, 'r')                 # the grooming bag on the floor
+    c.pattern(56, 128, ['..KKKKKKKKKKKKKKKKKKKKKK..', '.K......................K.', 'K........................K'])
+    paste(c, prod_shampoo_human(), 60, 122); paste(c, prod_toothpaste_human(), 66, 131)
+    return shift_up(c, 20)
+
+
+STORY_PANELS = {'bedroom': draw_panel_bedroom, 'car_there': draw_panel_car_there, 'rescue': draw_panel_rescue, 'chosen': draw_panel_chosen,
+                'afternoon': draw_panel_afternoon, 'afternoon_sniff': draw_panel_afternoon_sniff, 'night': draw_panel_night,
+                'scratching': draw_panel_scratching, 'grooming_bag': draw_panel_grooming_bag, 'vet_chart': draw_panel_vet_chart}
+STORY_LINES = {   # (who, line) as in the approved story flow; the preview shows each panel in its cutscene frame
+    'bedroom': ('parent', "Wake up, sleepyhead! It's Puppy Day. We leave in five minutes!"),
+    'car_there': ('parent', "We're off to the rescue centre. Lots of puppies there need a family."),
+    'rescue': (None, "So many puppies! But one of them can't stop wagging at you."),
+    'chosen': ('parent', 'Looks like this little one picked you. What will you call them?'),
+    'afternoon': ('parent', 'Biscuit has had lunch and lots of play. Puppies often need to go potty after that...'),
+    'afternoon_sniff': (None, 'Wait... why is Biscuit sniffing the rug like that?'),
+    'night': ('parent', 'What a first day! Biscuit learned so much, and so did you.'),
+    'scratching': ('parent', "Biscuit keeps scratching. Let's take them to the vet for a check-up."),
+    'grooming_bag': ('parent', "Bring Biscuit's grooming bag too. The vet can check what we use at home."),
+    'vet_chart': ('vet', "Hello, Biscuit! Let's compare you with a healthy dog, and check that grooming bag too."),
+}
+
+
+def group9():
+    out = {}
+    for name, fn in STORY_PANELS.items():
+        art = fn()
+        for coat, cols in COATS.items():
+            out[f'assets/screens/panel_{name}_{coat}.png'] = ([art], cols, {'section': 'bg', 'anim': name})
+    out['assets/sprites/kid_stand.png'] = ([kid('stand')], None, {'section': 'Characters (drawn into the panels)', 'anim': 'kid', 'note': 'Also: worried, hug, pyjamas, sitting'})
+    out['assets/sprites/parent_body.png'] = ([parent_body()], None, {'section': 'Characters (drawn into the panels)', 'anim': 'parent', 'note': 'Full length, matches the portrait'})
+    return out
+
+
+def g9_mockups():
+    ci, sp = panel(18, 18, 'W', ring='E'), speech_bubble()
+    pface = crop(parent_frames()['talk'][1], 11, 5, 26, 26)
+    vface = crop(vet_frames()['talk'][1], 11, 5, 26, 26)
+    out = []
+    for name, (who, line) in STORY_LINES.items():
+        items = [(f'assets/screens/panel_{name}_caramel.png', 0, 0, 2), ('@rect', 0, 0, 640, 30, '#D7C4EC'), ('@rect', 0, 292, 640, 68, '#D7C4EC')]
+        if who:
+            items += [('@canvas', nine(ci, 30, 30, 6), 8, 296, 2), ('@canvas', pface if who == 'parent' else vface, 12, 300, 2)]
+        x0 = 82 if who else 20
+        items += [('@canvas', nine(sp, (622 - x0) // 2, 26, 5), x0, 302, 2), ('@text', x0 + 16, 312, 600 - x0, line, 16, INK, 'left'),
+                  ('@text', 560, 8, 72, 'Skip', 13, INK, 'right')]
+        out.append((f'{name} ({"the " + who if who else "story, no speaker"})', (640, 360), items))
+    return out
+
+
+# ---------------------------------------------------------------- group 10: Level 2, spot the difference + bath time
+# One big young dog (76x62, feet on y=58) drawn healthy; the four problems the vet finds are separate layers on top
+# (ISSUES). Spot the difference shows them all on "your" dog; bath time removes them one by one as each is cared for.
+BIG_W, BIG_H, BIG_GROUND = 76, 62, 58
+BIG_PAWS = ((19, 'B'), (26, 'A'), (51, 'B'), (58, 'A'))          # paw centre x, colour (far legs in shade)
+
+
+def big_dog(eyes='open'):
+    c = Canvas(BIG_W, BIG_H)
+    for i, (x, y) in enumerate(((15, 27), (12, 24), (10, 21), (8, 18), (7, 15), (7, 12), (8, 9))):   # tail, up and happy
+        c.rect(x - 2, y - 2, 4, 4, 'A' if i < 5 else 'C')
+    for px, col in BIG_PAWS:                                                   # legs + white paws
+        c.rect(px - 3, 36, 6, 18, col)
+        c.ellipse(px + 1, 55.5, 4.5, 2.6, 'C')
+    c.ellipse(34, 32, 22, 11, 'A', shade='B', light='C')                        # body
+    c.ellipse(52, 34, 8, 10, 'A', shade='B')                                    # chest
+    c.ellipse(58, 18, 11, 10, 'A', light='C')                                   # head
+    c.ellipse(67, 23, 7.5, 5, 'C')                                              # snout
+    c.ellipse(66, 30, 5, 2.2, 'C')                                              # lower jaw
+    c.rect(62, 27, 10, 2, 'k'); c.rect(63, 27, 8, 1, 'W'); c.rect(65, 29, 4, 2, 'N')   # open mouth: teeth, tongue
+    c.rect(72, 18, 3, 3, 'k'); c.put(72, 18, 'w')                               # nose
+    if eyes == 'open':
+        c.rect(60, 13, 3, 3, 'k'); c.put(61, 13, 'w')
+    else:
+        c.rect(60, 15, 3, 1, 'k')
+    c.rect(60, 19, 2, 1, 'N')                                                   # blush
+    c.ellipse(50, 19, 4.5, 9, 'B')                                              # floppy ear
+    c.recolor_filled(45, 27, 4, 8, 'R'); c.rect(46, 35, 2, 2, 'Y')               # collar + tag
+    return c.outline()
+
+
+def issue(name):
+    """One problem, as a layer drawn over big_dog() at the same position."""
+    c = Canvas(BIG_W, BIG_H)
+    if name == 'nails':                                                         # long nails poking out of every paw
+        for px, _ in BIG_PAWS:
+            c.rect(px + 5, 55, 3, 2, 'W'); c.rect(px + 7, 56, 2, 2, 'W')
+        return c.outline()
+    if name == 'ears':                                                          # brown wax round the ear opening
+        c.ellipse(51, 24, 2.2, 2, 't'); c.put(49, 20, 'y'); c.put(52, 16, 't'); c.rect(48, 26, 2, 1, 'd'); c.put(53, 21, 'y')
+    elif name == 'teeth':                                                       # yellow tartar
+        c.rect(63, 27, 8, 1, 'y'); c.put(64, 27, 't'); c.put(67, 27, 't'); c.put(70, 27, 't')
+    elif name == 'fleas':                                                       # fleas and itchy red spots on the back
+        for x, y in ((26, 24), (36, 23), (31, 28), (42, 27), (20, 29)):
+            c.pattern(x, y, ['k.k', '.k.'])
+        for x, y in ((29, 26), (39, 26), (23, 27)):
+            c.put(x, y, 'R')
+    return c
+
+
+ISSUES = ('nails', 'ears', 'teeth', 'fleas')
+
+
+def dog_with(issues):
+    c = big_dog()
+    for n in issues:
+        paste(c, issue(n), 0, 0)
+    return c
+
+
+def _in_region(part, x, y):
+    e = lambda cx, cy, rx, ry: ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1
+    return {'ears': lambda: e(50, 19, 6, 10.5), 'teeth': lambda: 59 <= x and 21 <= y <= 33, 'eyes': lambda: e(61, 14, 4.5, 4.5),
+            'paws': lambda: y >= 49, 'coat': lambda: e(32, 30, 19, 9) and x >= 14, 'tail': lambda: x <= 15 and y <= 27,
+            'neck': lambda: e(45, 24, 4, 5)}[part]()
+
+
+BODY_PARTS = ('ears', 'teeth', 'eyes', 'paws', 'coat', 'tail')               # tappable in spot the difference
+BATH_PARTS = ('teeth', 'paws', 'ears', 'coat', 'neck')                        # drop targets in bath time
+
+
+def part_mask(part):
+    """The part's shape (any colour, used for pixel-perfect taps), from the dog with every problem showing."""
+    full, c = dog_with(ISSUES), Canvas(BIG_W, BIG_H)
+    for y in range(BIG_H):
+        for x in range(BIG_W):
+            if full.px[y][x] and _in_region(part, x, y):
+                c.px[y][x] = 'W'
+    return c
+
+
+def part_ring(part):
+    """Hover highlight, drawn over the dog: a white line round the part with butter outside it, so it shows on every coat."""
+    m, c = part_mask(part), Canvas(BIG_W, BIG_H)
+    near = lambda g, x, y: any(g.get(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+    for y in range(BIG_H):
+        for x in range(BIG_W):
+            if m.px[y][x] is None and near(m, x, y):
+                c.px[y][x] = 'w'
+    for y in range(BIG_H):
+        for x in range(BIG_W):
+            if m.px[y][x] is None and c.px[y][x] is None and near(c, x, y) and any(c.get(x + dx, y + dy) == 'w' for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                c.px[y][x] = 'Y'
+    return c
+
+
+# ---- the five products on each tray: [healthy kit, the bag from home]. The brush is the same in both (a decoy).
+PAW4 = ['k..k', '.kk.', 'kkkk', '.kk.']
+
+
+def tray_item(name, side):
+    good = side == 'dog'
+    if name == 'toothpaste':
+        c = Canvas(24, 10)
+        c.rect(1, 2, 16, 6, 'M' if good else 'W'); c.rect(1, 2, 2, 6, 'm' if good else 'E')
+        if good:
+            c.rect(5, 3, 9, 4, 'W'); c.pattern(8, 3, PAW4)
+        else:
+            for x in (5, 9, 13):
+                c.rect(x, 2, 2, 6, 'S' if x != 9 else 'M')
+        c.rect(17, 3, 5, 4, 'W' if good else 'R')
+    elif name == 'shampoo':
+        c = Canvas(14, 22)
+        body, shade = ('S', 's') if good else ('N', 'p')
+        c.rect(2, 6, 10, 15, body); c.rect(10, 6, 2, 15, shade); c.rect(4, 3, 6, 3, 'W'); c.rect(5, 1, 4, 2, 'M' if good else 'W')
+        c.rect(3, 10, 7, 7, 'W')
+        if good:
+            c.pattern(4, 11, PAW4)
+        else:
+            c.pattern(4, 11, ['.Y.', 'YRY', '.Y.']); c.rect(5, 14, 1, 2, 'G')
+    elif name == 'flea':
+        c = Canvas(16, 16)
+        body, shade = ('M', 'm') if good else ('L', 'l')
+        c.rect(1, 2, 14, 13, body); c.rect(12, 2, 3, 13, shade); c.rect(3, 5, 9, 7, 'W')
+        c.pattern(5, 6, ['k...k', 'kkkkk', 'kk.kk', '.kkk.'] if good else ['k...k', 'kk.kk', 'kkkkk', '.kkk.'])
+        if good:
+            c.put(5, 6, 'd'); c.put(9, 6, 'd')                                  # floppy ears (dog) vs pointy (cat)
+    elif name == 'toy':
+        if good:
+            c = Canvas(18, 18)
+            c.ellipse(9, 9, 7.5, 7.5, 'R', shade='r', light='N')
+            for y in range(18):
+                for x in range(18):
+                    if ((x + 0.5 - 9) / 3) ** 2 + ((y + 0.5 - 9) / 3) ** 2 <= 1:
+                        c.px[y][x] = None
+        else:
+            c = Canvas(8, 8)
+            c.ellipse(4, 4, 2.6, 2.6, 'Y', shade='y'); c.put(3, 3, 'w')
+    elif name == 'brush':
+        c = Canvas(22, 10)
+        c.rect(1, 4, 8, 3, 'D'); c.rect(9, 2, 11, 4, 'D'); c.rect(9, 5, 11, 1, 'd')
+        for x in range(10, 20, 2):
+            c.rect(x, 6, 1, 3, 'W')
+    return c.outline()
+
+
+TRAY = ('toothpaste', 'shampoo', 'flea', 'toy', 'brush')
+DIFFS = ('nails', 'ears', 'teeth', 'fleas', 'toothpaste', 'shampoo', 'flea', 'toy')     # the 8 to find
+# Spot-the-difference layout, world px. Mirrored by LEVEL2.spot in src/content.js.
+SPOT = dict(frames=(6, 164), top=28, w=150, h=144, dog_dx=37, dog_feet=114, item_xs=(20, 46, 74, 102, 130), item_bottom=162)
+
+
+def draw_spot_bg():
+    """The clinic wall with two framed pictures (left: the healthy chart, right: your dog) on mats, each with a tray."""
+    c = Canvas(320, 180)
+    c.rect(0, 0, 320, 180, 'S')
+    for y in range(6, 180, 12):
+        for x in range(4 + (6 if (y // 12) % 2 else 0), 320, 12):
+            c.put(x, y, 's')
+    for fx in SPOT['frames']:
+        box(c, fx, SPOT['top'], SPOT['w'], SPOT['h'], 'D'); c.rect(fx + 1, SPOT['top'] + 1, SPOT['w'] - 2, 1, 'w')
+        box(c, fx + 4, SPOT['top'] + 4, SPOT['w'] - 8, SPOT['h'] - 8, 'W')
+        box(c, fx + 45, SPOT['top'] + 1, 60, 14, 'Y'); c.rect(fx + 46, SPOT['top'] + 12, 58, 2, 'y')   # name plate (words drawn in game)
+        f = SPOT['dog_feet']
+        box(c, fx + 26, f - 2, 98, 6, 'M'); c.rect(fx + 27, f + 2, 96, 1, 'm')        # the mat the dog stands on
+        box(c, fx + 8, 132, SPOT['w'] - 16, 34, 'E'); c.rect(fx + 9, 160, SPOT['w'] - 18, 5, 'P')   # tray
+    return c
+
+
+# ---- close-ups (120x110 each, shown side by side at 2x). Hit boxes (x, y, w, h) are mirrored in LEVEL2.spot.closeups.
+CU_W, CU_H = 120, 110
+
+
+def _cu(draw):
+    big = Canvas(320, 180)
+    draw(big)
+    return crop(big, 100, 70, CU_W, CU_H)
+
+
+def cu_teeth(tartar):
+    def d(c):
+        c.rect(100, 70, 120, 110, 'r')
+        c.rect(100, 70, 120, 28, 'A'); c.rect(100, 92, 120, 6, 'B')
+        blob(c, 160, 82, 13, 7, 'k', 'K'); c.rect(154, 78, 5, 2, 'w')
+        c.rect(100, 98, 120, 9, 'N'); c.rect(100, 105, 120, 2, 'p')
+        for (x, w, h, tar) in ((114, 11, 24, 11), (128, 9, 15, 8), (139, 9, 14, 7), (150, 9, 15, 9),
+                               (161, 9, 14, 6), (172, 9, 15, 8), (183, 9, 14, 7), (195, 11, 24, 12)):
+            box(c, x, 106, w, h, 'W')
+            c.rect(x + 1, 107, 1, h - 3, 'w')
+            if tartar:
+                c.rect(x + 1, 107, w - 2, tar, 'y'); c.rect(x + 1, 106 + tar, w - 2, 1, 't')
+                c.put(x + 2, 108, 't'); c.put(x + w - 3, 110 + tar // 2, 't')
+        c.ellipse(160, 146, 28, 9, 'N', shade='p'); c.rect(160, 138, 1, 9, 'p')
+        c.rect(100, 152, 120, 28, 'A'); c.rect(100, 152, 120, 3, 'B')
+        c.rect(100, 148, 120, 6, 'N')
+        for x in range(122, 200, 12):
+            box(c, x, 138, 9, 11, 'W')
+            if tartar:
+                c.rect(x + 1, 144, 7, 4, 'y'); c.rect(x + 1, 144, 7, 1, 't')
+    return _cu(d)
+
+
+def cu_coat(fleas):
+    def d(c):
+        c.rect(100, 70, 120, 110, 'A')
+        for j, y in enumerate(range(72, 178, 7)):
+            for x in range(100 + (j % 3) * 3, 222, 11):
+                c.pattern(x, y, ['B..', '.B.', '..B'] if (x + y) % 3 else ['..C', '.C.', 'C..'])
+        if not fleas:
+            for x, y in ((130, 96), (190, 140)):
+                c.pattern(x, y, ['.w.', 'www', '.w.'])                           # a shiny, healthy coat
+            return
+        for x, y in ((126, 98), (188, 150), (120, 146)):
+            c.pattern(x, y, ['.R.', 'RRR', '.R.'])
+        for i in range(8):
+            c.put(126 + i * 4, 146 - i * 3 - (i * i) // 3, 'w')
+        blob(c, 166, 110, 14, 10, 'h', 'K', light='H'); blob(c, 179, 104, 6, 6, 'h', 'K')
+        c.put(181, 103, 'w'); c.put(182, 105, 'w')
+        for lx, ly in ((154, 119), (160, 121), (168, 121), (175, 119)):
+            line(c, lx, ly, lx - 3, ly + 6, 'K', 2)
+        c.pattern(184, 92, ['..KK', '.KK.', 'KK..']); c.pattern(188, 96, ['KK..', '.KK.', '..KK'])
+    return _cu(d)
+
+
+def cu_paws(long):
+    def d(c):
+        c.rect(100, 70, 120, 110, 'M')
+        for x in range(100, 220, 16):
+            c.rect(x, 70, 1, 110, 'm')
+        blob(c, 160, 154, 26, 16, 'A', 'K', shade='B', light='C')
+        blob(c, 160, 157, 13, 7, 'N', 'K', shade='p')
+        for tx, ty in ((131, 130), (150, 119), (170, 119), (189, 130)):
+            blob(c, tx, ty, 8, 10, 'A', 'K', shade='B', light='C')
+        n = 15 if long else 5
+        for nx, ny, lean in ((130, 120, -3), (149, 109, -1), (171, 109, 1), (190, 120, 3)):
+            for i in range(n):
+                x = nx + (lean * (i * i)) // 70
+                c.rect(x - 2, ny - i, 5, 1, 'K')
+            for i in range(n - 1):
+                x = nx + (lean * (i * i)) // 70
+                c.rect(x - 1, ny - i, 3, 1, 'W' if i % 5 else 'E')
+        if long:
+            for x, y in ((111, 100), (206, 100), (160, 88)):
+                c.pattern(x, y, ['K.K', '.K.', 'K.K'])
+    return _cu(d)
+
+
+def cu_ears(wax):
+    def d(c):
+        c.rect(100, 70, 120, 110, 'E')
+        blob(c, 160, 124, 36, 48, 'B', 'K', light='A')
+        for x, y in ((127, 100), (129, 138), (192, 104), (194, 140)):
+            c.rect(x, y, 3, 2, 'A')
+        c.ellipse(161, 128, 27, 38, 'N', shade='p'); c.ellipse(161, 130, 21, 31, 'P')
+        for dy, rx, ry in ((0, 15, 24), (2, 10, 17)):
+            for a in range(0, 360, 6):
+                c.put(round(161 + rx * math.cos(math.radians(a))), round(132 + ry * math.sin(math.radians(a))), 'p')
+        if wax:
+            c.ellipse(161, 140, 9, 11, 'y'); c.ellipse(161, 142, 6, 7, 't'); c.ellipse(161, 143, 3, 4, 'k')
+            for x, y, w in ((148, 124, 5), (172, 120, 4), (150, 150, 4), (174, 148, 5)):
+                c.rect(x, y, w, 2, 'y'); c.rect(x, y + 1, w, 1, 't')
+        else:
+            c.ellipse(161, 143, 3, 4, 'p')
+            for x, y in ((116, 88), (204, 100)):
+                c.pattern(x, y, ['.w.', 'www', '.w.'])
+    return _cu(d)
+
+
+def cu_eyes():
+    def d(c):
+        c.rect(100, 70, 120, 110, 'A')
+        for j, y in enumerate(range(72, 178, 8)):
+            for x in range(100 + (j % 2) * 5, 222, 10):
+                c.pattern(x, y, ['B.', '.B'])
+        c.ellipse(160, 126, 30, 24, 'W'); c.ellipse(160, 128, 20, 20, 'h'); c.ellipse(160, 128, 13, 13, 'k')
+        c.rect(150, 116, 7, 6, 'w'); c.rect(167, 134, 3, 3, 'w')
+        ring(c, 160, 126, 30, 24, ('W', 'h', 'k', 'w'))
+        for x in range(134, 188, 6):                                               # lashes
+            c.rect(x, 101 - abs(x - 160) // 6, 2, 3, 'K')
+        c.ellipse(160, 160, 34, 3, 'B')
+    return _cu(d)
+
+
+def cu_tail():
+    def d(c):
+        c.rect(100, 70, 120, 110, 'M')
+        for x in range(100, 220, 16):
+            c.rect(x, 70, 1, 110, 'm')
+        for i in range(9):                                                         # a big fluffy tail curling up
+            cx, cy = 130 + i * 9, 170 - i * 10 + (i * i) // 2
+            blob(c, cx, cy, 14 - i // 2, 12 - i // 2, 'A' if i < 7 else 'C', 'K', shade='B' if i < 7 else None)
+        for x, y in ((140, 150), (160, 128), (178, 110)):
+            c.pattern(x, y, ['B..', '.B.', '..B'])
+    return _cu(d)
+
+
+def _counter(c):
+    c.rect(100, 70, 120, 110, 'W')
+    for y in range(70, 180, 9):
+        for x in range(100 if (y // 9) % 2 else 109, 220, 18):
+            c.rect(x, y, 9, 9, 'E')
+
+
+def cu_toothpaste(good):
+    def d(c):
+        _counter(c)
+        c.rect(110, 104, 84, 34, 'K'); c.rect(111, 105, 82, 32, 'M' if good else 'W')
+        for x in range(111, 117):
+            c.rect(x, 105, 1, 32, 'm' if good else 'E')
+        c.rect(193, 112, 14, 18, 'K'); c.rect(194, 113, 12, 16, 'W' if good else 'R')
+        box(c, 124, 109, 58, 24, 'W')
+        if good:
+            big_text(c, 128, 114, 'DOG', 'K', 2); c.pattern(168, 115, ['k...k', '.kkk.', 'kkkkk', 'kkkkk', '.kkk.'])
+        else:
+            big_text(c, 127, 114, 'MINT', 'S', 2)
+            for x in (116, 186):
+                c.rect(x, 105, 3, 32, 'S')
+    return _cu(d)
+
+
+def cu_shampoo(good):
+    def d(c):
+        _counter(c)
+        body, shade = ('S', 's') if good else ('N', 'p')
+        c.rect(138, 76, 20, 8, 'K'); c.rect(139, 77, 18, 7, 'M' if good else 'W')       # cap
+        c.rect(126, 84, 44, 88, 'K'); c.rect(127, 85, 42, 86, body); c.rect(160, 85, 9, 86, shade)
+        box(c, 130, 104, 36, 44, 'W')
+        if good:
+            big_text(c, 131, 109, 'DOG', 'K', 2); c.pattern(140, 130, ['k...k', '.kkk.', 'kkkkk', 'kkkkk', '.kkk.'])
+        else:
+            big_text(c, 135, 109, 'HAIR', 'p', 1)
+            c.pattern(141, 124, ['..YY..', '.YYYY.', 'YYRRYY', 'YYRRYY', '.YYYY.', '..YY..']); c.rect(143, 130, 2, 10, 'G')
+    return _cu(d)
+
+
+def cu_flea(good):
+    def d(c):
+        _counter(c)
+        body, shade = ('M', 'm') if good else ('L', 'l')
+        c.rect(112, 86, 92, 86, 'K'); c.rect(113, 87, 90, 84, body); c.rect(192, 87, 11, 84, shade)
+        box(c, 122, 96, 62, 64, 'W')
+        big_text(c, 135, 100, 'DOG' if good else 'CAT', 'K', 2)
+        if good:                                                                   # floppy-eared dog head
+            c.ellipse(153, 136, 13, 11, 'D'); c.ellipse(139, 134, 4, 9, 'd'); c.ellipse(167, 134, 4, 9, 'd')
+            c.ellipse(153, 142, 6, 4, 'W'); c.rect(151, 139, 4, 3, 'k'); c.put(147, 132, 'k'); c.put(159, 132, 'k')
+        else:                                                                      # pointy-eared cat head
+            c.ellipse(153, 138, 13, 11, 'O')
+            c.pattern(140, 120, ['O...........O', 'OO.........OO', 'OOO.......OOO', 'OOOO.....OOOO'])
+            c.put(147, 135, 'k'); c.put(159, 135, 'k'); c.pattern(151, 140, ['kkk', '.k.'])
+            for wy in (141, 144):
+                c.rect(137, wy, 7, 1, 'K'); c.rect(163, wy, 7, 1, 'K')
+    return _cu(d)
+
+
+def cu_toy(good):
+    """The toy next to the dog's muzzle, for size: a chew ring too big to swallow vs a ball that fits in the mouth."""
+    def d(c):
+        _counter(c)
+        c.ellipse(212, 128, 26, 20, 'A', light='C'); c.ellipse(200, 140, 18, 9, 'C')      # the dog's muzzle, right
+        c.rect(182, 128, 6, 5, 'k'); c.put(183, 128, 'w')
+        c.rect(184, 146, 26, 3, 'k')                                                   # mouth line
+        if good:
+            blob(c, 140, 136, 26, 26, 'R', 'K', shade='r', light='N')
+            c.ellipse(140, 136, 10, 10, 'W'); ring(c, 140, 136, 10, 10, ('W',))
+        else:
+            blob(c, 166, 146, 6, 6, 'Y', 'K', shade='y'); c.put(164, 143, 'w')
+            for x, y in ((150, 132), (176, 128)):
+                c.pattern(x, y, ['.R.', 'R.R', '.R.'])
+    return _cu(d)
+
+
+def cu_brush():
+    def d(c):
+        _counter(c)
+        c.rect(110, 126, 44, 14, 'K'); c.rect(111, 127, 42, 12, 'D')
+        c.rect(150, 112, 58, 26, 'K'); c.rect(151, 113, 56, 24, 'D'); c.rect(151, 132, 56, 5, 'd')
+        for x in range(154, 206, 5):
+            c.rect(x, 138, 2, 12, 'W'); c.rect(x, 149, 2, 1, 'E')
+    return _cu(d)
+
+
+CLOSEUPS10 = {   # part: (healthy, yours); the same function twice means "no difference" (a decoy)
+    'teeth': (lambda: cu_teeth(False), lambda: cu_teeth(True)), 'coat': (lambda: cu_coat(False), lambda: cu_coat(True)),
+    'paws': (lambda: cu_paws(False), lambda: cu_paws(True)), 'ears': (lambda: cu_ears(False), lambda: cu_ears(True)),
+    'eyes': (cu_eyes, None), 'tail': (cu_tail, None),
+    'toothpaste': (lambda: cu_toothpaste(True), lambda: cu_toothpaste(False)), 'shampoo': (lambda: cu_shampoo(True), lambda: cu_shampoo(False)),
+    'flea': (lambda: cu_flea(True), lambda: cu_flea(False)), 'toy': (lambda: cu_toy(True), lambda: cu_toy(False)),
+    'brush': (cu_brush, None),
+}
+CU_HITS = {'teeth': (12, 34, 96, 46), 'coat': (46, 24, 44, 34), 'paws': (20, 28, 80, 26), 'ears': (44, 52, 34, 34),
+           'toothpaste': (22, 37, 62, 28), 'shampoo': (28, 32, 42, 48), 'flea': (20, 24, 66, 68), 'toy': (52, 60, 26, 26)}
+COAT_PARTS = ('teeth', 'coat', 'paws', 'ears', 'eyes', 'tail', 'toy')   # the toy is held up to your dog's muzzle
+
+
+# ---- bath time: the bathroom, the tub (its front is a layer over the dog), the shelf of care things, foam
+BATH = dict(mat_x=172, mat_feet=130, tub_x=62, tub_feet=112, shelf_x=(270, 294), boards=(56, 94))   # mirrored in LEVEL2.bath
+
+
+def draw_bath_bg():
+    c = Canvas(320, 180)
+    bathroom(c)
+    c.rect(24, 22, 160, 2, 'E'); c.rect(24, 22, 160, 1, 'K')                     # curtain rail + bunched curtain (below the HUD)
+    for x in range(26, 50, 4):
+        c.rect(x, 24, 4, 56, 'M'); c.rect(x + 3, 24, 1, 56, 'm')
+    c.rect(26, 79, 24, 1, 'K')
+    c.rect(40, 70, 4, 22, 'E'); box(c, 36, 66, 14, 6, 'E'); c.rect(46, 72, 2, 3, 'S')   # tap
+    box(c, 28, 92, 148, 10, 'W'); c.rect(29, 93, 146, 1, 'w')                     # tub rim (the front is its own layer)
+    c.ellipse(102, 98, 70, 3, 'S')
+    box(c, 166, 128, 86, 7, 'M')                                                  # bath mat
+    for x in range(170, 250, 8):
+        c.rect(x, 129, 2, 5, 'm')
+    box(c, 262, 56, 52, 4, 'D'); box(c, 262, 94, 52, 4, 'D')                     # shelf boards
+    c.rect(264, 60, 2, 6, 'd'); c.rect(310, 60, 2, 6, 'd'); c.rect(264, 98, 2, 6, 'd'); c.rect(310, 98, 2, 6, 'd')
+    box(c, 200, 24, 40, 30, 'W'); box(c, 204, 28, 32, 22, 'S'); c.rect(206, 30, 8, 1, 'w')   # little mirror
+    paste(c, rubber_duck(), 152, 84)
+    return c
+
+
+def rubber_duck():
+    c = Canvas(14, 10)
+    c.ellipse(6, 6, 5, 3, 'Y', shade='y'); c.ellipse(9, 3, 3, 2.5, 'Y'); c.rect(12, 3, 2, 1, 'O'); c.put(9, 2, 'k')
+    return c.outline()
+
+
+def draw_tub_front():
+    c = Canvas(320, 180)
+    box(c, 28, 100, 148, 32, 'W'); c.rect(29, 124, 146, 7, 'E'); c.rect(29, 101, 146, 1, 'w')
+    for x in range(40, 170, 9):                                                  # bubbles floating on the water line
+        c.ellipse(x, 100, 4, 2.5, 'W'); c.put(x - 1, 99, 'w')
+    for fx in (36, 162):                                                         # claw feet
+        box(c, fx, 131, 8, 6, 'Y'); c.rect(fx + 1, 135, 6, 1, 'y')
+    return c
+
+
+def care_item(name):
+    if name == 'toothbrush':                                                    # dog toothbrush with a blob of dog toothpaste
+        c = Canvas(26, 12)
+        c.rect(1, 6, 15, 3, 'M'); c.rect(1, 8, 15, 1, 'm'); c.rect(15, 5, 8, 4, 'W')
+        for x in range(16, 23, 2):
+            c.rect(x, 3, 1, 2, 'S')
+        c.ellipse(19, 2.5, 3, 1.5, 'M')
+        return c.outline()
+    if name == 'clippers':
+        c = Canvas(20, 14)
+        c.rect(1, 3, 9, 3, 'R'); c.rect(1, 8, 9, 3, 'R'); c.rect(9, 4, 4, 6, 'E'); c.rect(13, 5, 5, 4, 'E'); c.rect(14, 7, 4, 1, 'K')
+        c.put(10, 7, 'K')
+        return c.outline()
+    if name == 'ear':                                                           # ear cleaner (dog)
+        c = Canvas(12, 20)
+        c.rect(2, 6, 8, 13, 'Y'); c.rect(8, 6, 2, 13, 'y'); c.rect(4, 2, 4, 4, 'W'); c.rect(5, 0, 2, 2, 'W')
+        c.rect(3, 9, 6, 6, 'W'); c.pattern(4, 10, ['.dd.', 'd..d', 'd.d.', '.d..'])
+        return c.outline()
+    if name == 'towel':
+        c = Canvas(24, 14)
+        c.rect(1, 3, 22, 10, 'L'); c.rect(1, 1, 22, 3, 'L'); c.rect(1, 6, 22, 1, 'l'); c.rect(1, 10, 22, 2, 'l')
+        for x in range(3, 22, 4):
+            c.put(x, 12, 'W')
+        return c.outline()
+    return tray_item({'shampoo': 'shampoo', 'flea': 'flea'}[name], 'dog')
+
+
+CARE = ('toothbrush', 'clippers', 'ear', 'shampoo', 'towel', 'flea')          # shelf order (top board: 3, bottom board: 3)
+
+
+def foam_frames():
+    out = []
+    spots = [(22, 26), (32, 22), (42, 26), (28, 30), (38, 30), (48, 28), (18, 32), (52, 22), (34, 34), (44, 33), (24, 24), (56, 30)]
+    for n in (4, 8, 12):
+        c = Canvas(BIG_W, BIG_H)
+        for i, (x, y) in enumerate(spots[:n]):
+            r = 3 + (i % 3)
+            c.ellipse(x, y, r, r - 0.5, 'W', shade='E'); c.put(x - 1, y - 2, 'w')
+        out.append(c.outline('S'))
+    return out
+
+
+FONT5x7.update({
+    'D': ['11110', '10001', '10001', '10001', '10001', '10001', '11110'], 'O': ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+    'G': ['01111', '10000', '10000', '10011', '10001', '10001', '01111'], 'M': ['10001', '11011', '10101', '10101', '10001', '10001', '10001'],
+    'I': ['11111', '00100', '00100', '00100', '00100', '00100', '11111'], 'H': ['10001', '10001', '10001', '11111', '10001', '10001', '10001']})
+
+
+def group10():
+    out, S_, U = {}, 'assets/sprites/', 'assets/ui/'
+    out['assets/bg/spot_bg.png'] = ([draw_spot_bg()], None, {'section': 'bg', 'anim': 'spot'})
+    out['assets/bg/bath_bg.png'] = ([draw_bath_bg()], None, {'section': 'bg', 'anim': 'bath'})
+    out['assets/bg/bath_tub_front.png'] = ([draw_tub_front()], None, {'section': 'bg', 'anim': 'tub front'})
+    d = 'The big young dog (both tasks): healthy, plus one layer per problem'
+    for coat, cols in COATS.items():
+        out[S_ + f'big_{coat}.png'] = ([big_dog(), big_dog('closed')], cols, {'section': d, 'anim': 'healthy dog', 'coat': coat, 'note': 'Open eyes, then a happy blink'})
+    for n in ISSUES:
+        out[S_ + f'issue_{n}.png'] = ([issue(n)], None, {'section': d, 'anim': f'problem: {n}', 'note': 'Drawn over the dog until it is cared for'})
+    out[S_ + 'foam.png'] = (foam_frames(), None, {'section': d, 'anim': 'shampoo foam', 'note': 'Grows as the player scrubs'})
+    p = 'Tappable parts: the hover ring (the shape itself is used for taps)'
+    for part in BODY_PARTS + ('neck',):
+        out[S_ + f'part_{part}.png'] = ([part_mask(part)], None, {'section': 'bg', 'anim': part})
+        out[S_ + f'ring_{part}.png'] = ([part_ring(part)], None, {'section': p, 'anim': part, 'note': 'Bath only' if part == 'neck' else 'Spot + bath' if part in BATH_PARTS else 'Spot only'})
+    t = 'Tray products: the healthy kit (dog) vs the bag from home'
+    for name in TRAY:
+        for side in (('dog',) if name == 'brush' else ('dog', 'home')):
+            out[S_ + f'tray_{name}_{side}.png'] = ([tray_item(name, side)], None, {'section': t, 'anim': f'{name} ({side})', 'note': 'Same in both (decoy)' if name == 'brush' else ''})
+    cu = 'Close-ups (tap a part to compare both)'
+    for part, (h, y) in CLOSEUPS10.items():
+        for side, fn in (('healthy', h), ('yours', y)):
+            if fn is None:
+                continue
+            if part in COAT_PARTS:
+                art = fn()
+                for coat, cols in COATS.items():
+                    out[f'assets/screens/cu_{part}_{side}_{coat}.png'] = ([art], cols, {'section': 'bg', 'anim': part})
+            else:
+                out[f'assets/screens/cu_{part}_{side}.png'] = ([fn()], None, {'section': 'bg', 'anim': part})
+    b = 'Bath time: the care things on the shelf'
+    for name in CARE:
+        if name not in ('shampoo', 'flea'):
+            out[S_ + f'care_{name}.png'] = ([care_item(name)], None, {'section': b, 'anim': name, 'note': {'toothbrush': 'Dog toothbrush + dog toothpaste → teeth',
+                'clippers': 'Nail clippers → paws', 'ear': 'Ear cleaner → ears', 'towel': 'Towel → rub dry'}[name]})
+    out[U + 'icon_bath.png'] = ([icon('bath')], None, {'section': b, 'anim': 'bath icon', 'note': 'Album skill "Grooming", task card'})
+    return out
+
+
+def g10_mockups():
+    caramel = COATS['caramel']
     ci, bm, bc = panel(18, 18, 'W', ring='E'), button('M', 'm', 'Y')[0], button('W', 'E', 'Y')[0]
-    sp = speech_bubble()
-    t = lambda x, y, w, s, size, col='#5A3E36', al='center': ('@text', x, y, w, s, size, col, al)
+    t = lambda x, y, w, s, size, col=INK, al='center': ('@text', x, y, w, s, size, col, al)
     W2 = (640, 360)
 
-    def aisle(i, coins, taken=(), ticked=0, extra=()):
-        sign = [t(284, 110, 248, STORE_AISLES[i][0], 16), ('@canvas', draw_arrow('left'), 266, 106, 2), ('@canvas', draw_arrow('right'), 550, 106, 2)]
-        basket = [('assets/ui/basket.png', 578, 288, 2), t(590, 326, 36, f'{len(taken)}', 14)]
-        return ([('assets/bg/store_aisle.png', 0, 0, 2)] + store_hud(coins) + sign + aisle_items(i, taken)
-                + store_paper(4, 132, STORE_LIST, ticked) + basket + list(extra))
-    health = aisle(0, 60)
-    # tapping a shelf item: a small card with the name, the price and what the balance would be
-    pick = aisle(0, 60, extra=[('@rect', 0, 0, 640, 360, 'rgba(62,42,36,.4)'), ('@canvas', nine(ci, 120, 82, 6), 200, 100, 2),
-        t(216, 112, 208, 'Dog toothpaste', 18), ('assets/sprites/shop_toothpaste.png', 216, 142, 2), t(272, 144, 150, 'Costs 6 coins', 14, al='left'),
-        t(272, 164, 150, 'After: 54 coins left', 14, '#6FA07E', 'left'),
-        ('@canvas', nine(bm, 54, 16, 5), 214, 222, 2), t(214, 230, 108, 'Add', 16), ('@canvas', nine(bc, 46, 16, 5), 338, 222, 2), t(338, 231, 92, 'Not now', 13)])
-    # after a few buys, in the Play & Walk aisle
-    play = aisle(2, 31, taken=('tag', 'chew'), ticked=7)
-    # the basket
-    cells = [('toothbrush', 'toothpaste', 'flea', 'clippers', 'ear'), ('brush', 'tag', 'chew', 'bags', 'bandana')]
-    basket = aisle(3, 22, taken=sum(cells, ()), ticked=9, extra=[('@rect', 0, 0, 640, 360, 'rgba(62,42,36,.45)'), ('@canvas', nine(ci, 170, 140, 6), 150, 60, 2),
-        t(170, 74, 300, 'Your basket', 18, al='left')])
-    for r, row in enumerate(cells):
-        for k, id_ in enumerate(row):
-            basket += [('assets/sprites/shop_%s.png' % id_, 174 + k * 58, 106 + r * 74, 2)]
-    basket += [t(170, 262, 300, 'Total 49 of 60 coins. Tap an item to put it back.', 13, '#8a6f66', 'left'),
-               ('@canvas', nine(bm, 56, 16, 5), 264, 282, 2), t(264, 290, 112, 'Checkout', 16)]
-    # the till: the items are matched, one by one, to why they are on the list
-    till = ([('assets/bg/store_till.png', 0, 0, 2)] + store_hud(11) + store_paper(4, 132, STORE_LIST, 4)
-            + [('assets/sprites/shop_toothbrush.png', 300, 176, 2), ('assets/sprites/shop_toothpaste.png', 372, 176, 2),
-               ('@canvas', nine(ci, 52, 50, 6), 2, 40, 2), ('assets/sprites/parent_talk.png', 6, 42, 2),
-               ('@canvas', nine(sp, 210, 30, 5), 116, 58, 2), ('@canvas', speech_tail(), 100, 78, 2),
-               t(134, 70, 390, "The toothbrush and toothpaste are for the yellow tartar the vet found on Biscuit's teeth.", 16, '#5A3E36', 'left')])
-    # album page 2
-    album = [('assets/screens/album_bg.png', 0, 0, 2), ('assets/screens/polaroid.png', 82, 62, 2), ('assets/sprites/young_caramel_wag.png', 106, 78, 2),
-             t(54, 36, 210, 'Check-up Day', 24), t(82, 186, 128, 'Biscuit', 16), t(340, 40, 230, 'You learned:', 18, '#5A3E36', 'left'),
-             ('@canvas', icon('vet'), 340, 84, 2), t(380, 92, 200, 'Health check', 16, '#5A3E36', 'left'), ('@canvas', icon('check'), 530, 84, 2),
-             ('assets/ui/icon_coin.png', 340, 132, 2), t(380, 140, 200, 'Smart shopping', 16, '#5A3E36', 'left'), ('@canvas', icon('check'), 530, 132, 2),
-             ('@canvas', stamp(), 380, 196, 2), ('@canvas', nine(bm, 56, 16, 5), 380, 280, 2), t(380, 288, 112, 'Next', 18)]
-    return [('Aisle: Health (start of the shop, the coin jar is full)', W2, health), ('Tapping an item: name, price and what is left', W2, pick),
-            ('Aisle: Play & Walk (some items bought, so their shelf spots are empty)', W2, play), ('The basket (tap an item to put it back)', W2, basket),
-            ('The till: each item is matched to why it was bought', W2, till), ('Album page for Level 2', W2, album)]
+    def overview(found_teeth=True, hover='ears'):
+        items = [('@canvas', draw_spot_bg(), 0, 0, 2)] + hud8(50, 'Biscuit', 'magnifier', f'Found {1 if found_teeth else 0} of 8')
+        for side, fx in zip(('healthy', 'yours'), SPOT['frames']):
+            dog = big_dog() if side == 'healthy' else dog_with(ISSUES)
+            dx, dy = fx + SPOT['dog_dx'], SPOT['dog_feet'] - BIG_GROUND
+            items += [('@canvas', dog, dx * 2, dy * 2, 2, caramel), ('@canvas', part_ring(hover), dx * 2, dy * 2, 2)]
+            items.append(t((fx + 45) * 2, (SPOT['top'] + 3) * 2, 120, 'Healthy' if side == 'healthy' else 'Biscuit', 14))
+            for name, ix in zip(TRAY, SPOT['item_xs']):
+                cv = tray_item(name, 'dog' if side == 'healthy' or name == 'brush' else 'home')
+                items.append(('@canvas', cv, (fx + ix) * 2 - cv.w, (SPOT['item_bottom'] - cv.h) * 2, 2))
+            if found_teeth and side == 'yours':
+                items.append(('@canvas', found_ring(20, 18), (dx + 58) * 2, (dy + 18) * 2, 2))
+        return items + [('@canvas', paw_cursor(), (SPOT['frames'][1] + SPOT['dog_dx'] + 50) * 2 + 4, (SPOT['dog_feet'] - BIG_GROUND + 22) * 2, 1)]
+
+    def closer(part, title_l='Healthy', found_hit=True):
+        h, y = CLOSEUPS10[part]
+        L, R = h(), (y or h)()
+        items = overview(True, 'ears') + [('@rect', 0, 0, 640, 360, 'rgba(62,42,36,0.55)')]
+        for cv, x, label in ((L, 64, title_l), (R, 336, 'Biscuit')):
+            items += [('@canvas', nine(ci, 128, 132, 6), x - 8, 48, 2), t(x, 58, 240, label, 16),
+                      ('@canvas', cv, x, 84, 2, caramel)]
+        if found_hit and part in CU_HITS:
+            hx, hy, hw, hh = CU_HITS[part]
+            ring_cv = found_ring(hw + 6, hh + 6)
+            items += [('@canvas', ring_cv, 336 + (hx - 3) * 2, 84 + (hy - 3) * 2, 2), ('@canvas', ring_cv, 64 + (hx - 3) * 2, 84 + (hy - 3) * 2, 2)]
+        return items + [('@canvas', nine(bm, 50, 16, 5), 270, 316, 2), t(270, 322, 100, 'Back', 17)]
+
+    def bath(on_mat=True, foam=None, done=()):
+        items = [('@canvas', draw_bath_bg(), 0, 0, 2)]
+        x, feet = (BATH['mat_x'], BATH['mat_feet']) if on_mat else (BATH['tub_x'], BATH['tub_feet'])
+        items.append(('@canvas', dog_with([i for i in ISSUES if i not in done]), x * 2, (feet - BIG_GROUND) * 2, 2, caramel))
+        if foam is not None:
+            items.append(('@canvas', foam_frames()[foam], x * 2, (feet - BIG_GROUND) * 2, 2))
+        items.append(('@canvas', draw_tub_front(), 0, 0, 2))
+        for i, name in enumerate(CARE):
+            cv = care_item(name)
+            bx = BATH['shelf_x'][0] + (i % 3) * 16 - 4
+            items.append(('@canvas', cv, bx * 2, (BATH['boards'][i // 3] - cv.h) * 2, 2))
+        return items + hud8(40, 'Biscuit', 'bath', 'Bath time  2 of 2')
+
+    start = bath() + [('@canvas', part_ring('teeth'), BATH['mat_x'] * 2, (BATH['mat_feet'] - BIG_GROUND) * 2, 2),
+                      ('@canvas', care_item('toothbrush'), (BATH['mat_x'] + 78) * 2, (BATH['mat_feet'] - BIG_GROUND + 22) * 2, 2)]
+    scrub = bath(False, 1, ('teeth', 'nails', 'ears')) + [('@canvas', hand_frames()[1], (BATH['tub_x'] + 34) * 2, (BATH['tub_feet'] - BIG_GROUND + 20) * 2, 2)]
+    return [('Spot the difference: hovering the ears highlights them in both pictures (the tartar is already found)', W2, overview()),
+            ('Closer look: paws (the long nails are found and circled in both)', W2, closer('paws')),
+            ('Closer look: the toothpaste from home is for people', W2, closer('toothpaste')),
+            ('Closer look: a decoy (the eyes are the same in both)', W2, closer('eyes', found_hit=False)),
+            ('Bath time: dragging the dog toothbrush to the teeth (the drop target lights up)', W2, start),
+            ('Bath time: in the tub, scrubbing in the shampoo (teeth, nails and ears done)', W2, scrub)]
 
 
-GROUPS = {1: group1, 2: group2, 3: group3, 4: group4, 5: group5, 6: group6, 7: group7}
-SCENES = {2: SCENES2, 3: ui_mockups(), 4: screen_mockups(), 5: keyboard_mockups(), 6: l2_mockups(), 7: store_mockups()}
+# ---------------------------------------------------------------- group 8: blocking dialogue, demos, level select, time cards
+INK = '#5A3E36'
+ICONS8 = {
+    'help':      lambda c: c.pattern(5, 3, ['.WWWW.', 'WW..WW', '....WW', '...WW.', '..WW..', '..WW..', '......', '..WW..', '..WW..']),
+    'lock':      lambda c: (c.rect(5, 2, 6, 2, 'E'), c.rect(4, 3, 2, 5, 'E'), c.rect(10, 3, 2, 5, 'E'),
+                            c.rect(3, 7, 10, 7, 'Y'), c.rect(3, 12, 10, 2, 'y'), c.rect(7, 9, 2, 3, 'K')),
+    'magnifier': lambda c: (c.ellipse(6.5, 6.5, 4.6, 4.6, 'W'), c.ellipse(6.5, 6.5, 3.2, 3.2, 'S'), c.put(5, 4, 'w'), c.put(4, 5, 'w'),
+                            [c.rect(10 + i, 10 + i, 2, 2, 'D') for i in range(4)]),
+}
+
+
+def hand_frames():
+    """Ghost hand for demos: a pointing hand (fingertip at HAND_TIP), then the same hand pressing down."""
+    rows = ['.....WW.........', '....WWWW........', '....WWWW........', '....WWWW........', '....WWWW........',
+            '....WWWWWW.WW...', '....WWWWWWWWWWW.', '.WW.WWWWWWWWWWWW', 'WWWWWWWWWWWWWWWW', 'WWWWWWWWWWWWWWWW',
+            '.WWWWWWWWWWWWWWW', '..WWWWWWWWWWWWW.', '..WWWWWWWWWWWWW.', '...WWWWWWWWWWW..', '...WWWWWWWWWWW..',
+            '....WWWWWWWWW...', '....SSSSSSSSS...', '....SSSSSSSSS...']
+    out = []
+    for press in (False, True):
+        c = Canvas(18, 22)
+        c.pattern(1, 3 if press else 1, rows[2:] if press else rows)   # pressing: the body stays put, the finger shortens
+        for y in range(c.h):                            # shade the right edge of every row
+            xs = [x for x in range(c.w) if c.px[y][x] == 'W']
+            if xs:
+                c.px[y][xs[-1]] = 'E'
+        for x, y in ((10, 8), (13, 8), (10, 9), (13, 9)):  # knuckle creases of the folded fingers
+            c.put(x, y, 'E')
+        out.append(c.outline())
+    return out
+
+
+HAND_TIP = (7, 1)                                       # fingertip pixel (art px) of the pointing frame
+
+
+def tap_ring_frames():
+    out = []
+    for r in (3, 5, 7):
+        c = Canvas(20, 20)
+        for y in range(20):
+            for x in range(20):
+                if r - 0.8 <= math.hypot(x + 0.5 - 10, y + 0.5 - 10) <= r + 0.2:
+                    c.put(x, y, 'Y')
+        out.append(c.outline())
+    return out
+
+
+def demo_dot():
+    c = Canvas(6, 6)
+    c.pattern(1, 1, ['.YY.', 'YYYY', 'YYYY', '.YY.'])
+    return c.outline()
+
+
+def found_ring(w, h):
+    """Coral pen circle (2 px, no outline so it reads as drawn on), round a difference once found."""
+    c = Canvas(w, h)
+    cx, cy, rx, ry = w / 2, h / 2, w / 2 - 1, h / 2 - 1
+    for y in range(h):
+        for x in range(w):
+            d = ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2
+            di = ((x + 0.5 - cx) / (rx - 2)) ** 2 + ((y + 0.5 - cy) / (ry - 2)) ** 2
+            if d <= 1 and di > 1:
+                c.put(x, y, 'R')
+    return c
+
+
+def time_icon(kind):
+    c = Canvas(32, 32)
+    rays = lambda cx, cy, r, angles: [c.rect(round(cx + r * math.cos(math.radians(a))) - 1, round(cy + r * math.sin(math.radians(a))) - 1, 3, 3, 'Y')
+                                     for a in angles]
+    if kind == 'morning':
+        rays(16, 16, 13, range(0, 360, 45))
+        c.ellipse(16, 16, 8, 8, 'Y', shade='y'); c.rect(12, 11, 3, 2, 'w')
+    elif kind == 'afternoon':
+        rays(12, 12, 10, range(150, 330, 45))
+        c.ellipse(12, 12, 6.5, 6.5, 'Y', shade='y'); c.rect(9, 8, 2, 2, 'w')
+        c.ellipse(19, 21, 8, 5, 'W', shade='E'); c.ellipse(12, 23, 5, 3.6, 'W', shade='E'); c.ellipse(25, 23, 5, 3.4, 'W', shade='E')
+    elif kind == 'evening':
+        rays(16, 21, 13, range(195, 350, 36))
+        c.ellipse(16, 21, 9, 9, 'O', shade='o'); c.rect(12, 15, 3, 2, 'Y')
+        c.ellipse(16, 30, 16, 7, 'm', shade='G')
+        for y in range(28, 32):                          # nothing below the hill
+            for x in range(32):
+                if c.px[y][x] in ('O', 'o', 'Y'):
+                    c.px[y][x] = 'm'
+    elif kind == 'night':
+        c.ellipse(15, 17, 9, 9, 'Y', shade='y')
+        for y in range(32):
+            for x in range(32):
+                if ((x + 0.5 - 20) / 7.5) ** 2 + ((y + 0.5 - 13) / 7.5) ** 2 <= 1:
+                    c.px[y][x] = None
+        c.pattern(23, 4, ['.w.', 'wYw', '.w.']); c.pattern(25, 22, ['.Y.', 'YYY', '.Y.']); c.put(28, 13, 'Y')
+    elif kind == 'later':
+        c.rect(5, 7, 22, 21, 'W'); c.rect(5, 7, 22, 5, 'R'); c.rect(5, 11, 22, 1, 'r'); c.rect(5, 26, 22, 2, 'E')
+        c.rect(10, 4, 2, 5, 'E'); c.rect(20, 4, 2, 5, 'E')
+        for y in (14, 18, 22):
+            for x in (8, 12, 16, 20):
+                c.rect(x, y, 2, 2, 'E')
+        c.rect(23, 21, 4, 4, 'R'); c.rect(24, 22, 2, 2, 'W')    # the circled day
+    return c.outline()
+
+
+TIME_ICONS = ('morning', 'afternoon', 'evening', 'night', 'later')
+
+
+def draw_timecard_bg():
+    """Full-screen card between story beats ("Later that afternoon"). Icon sits above the banner; the words are drawn in game."""
+    c = Canvas(320, 180)
+    c.rect(0, 0, 320, 180, 'L')
+    for y in range(8, 180, 18):
+        for x in range(10 + (9 if (y // 18) % 2 else 0), 320, 18):
+            c.put(x, y, 'l')
+    for x, y in ((40, 30), (276, 40), (60, 140), (250, 150), (24, 96), (296, 110), (150, 22), (190, 158)):
+        c.pattern(x - 1, y - 1, ['.W.', 'WWW', '.W.'])
+    tail = Canvas(26, 28)
+    for y in range(1, 27):
+        notch = 7 - abs(y - 14) * 7 // 13
+        tail.rect(1 + notch, y, 24 - notch, 1, 'P' if y < 22 else 'p')
+    tail.outline()
+    paste(c, tail, 44, 84); paste(c, tail.flipped(), 320 - 44 - 26, 84)
+    box(c, 62, 78, 196, 28, 'W'); c.rect(63, 102, 194, 3, 'E'); c.rect(63, 79, 194, 1, 'w')
+    return c
+
+
+def draw_select_bg():
+    """Level select: a cork board on the hallway wall; level cards are pinned to it in game."""
+    c = Canvas(320, 180)
+    c.rect(0, 0, 320, 180, 'W')
+    for y in range(8, 180, 14):
+        for x in range(6 + (7 if (y // 14) % 2 else 0), 320, 14):
+            c.pattern(x - 1, y - 1, ['.E.', 'EEE', '.E.'])
+    box(c, 8, 26, 304, 150, 'D'); c.rect(9, 27, 302, 1, 'w'); c.rect(9, 173, 302, 2, 'd')
+    box(c, 12, 30, 296, 142, 'T')
+    for i in range(420):                                 # cork speckles
+        c.put(13 + (i * 37) % 294, 31 + (i * 53 + i // 7) % 140, 't')
+    return c
+
+
+def _frame(c):
+    c.rect(0, 0, c.w, 1, 'K'); c.rect(0, c.h - 1, c.w, 1, 'K'); c.rect(0, 0, 1, c.h, 'K'); c.rect(c.w - 1, 0, 1, c.h, 'K')
+    return c
+
+
+def thumb_home():
+    c = Canvas(80, 56)
+    wall_and_floor(c, 40)
+    box(c, 7, 7, 24, 20, 'W'); box(c, 9, 9, 20, 16, 'S'); c.rect(19, 9, 1, 16, 'K'); c.ellipse(14, 13, 3, 1.5, 'W')
+    box(c, 47, 20, 28, 14, 'P'); box(c, 44, 28, 34, 11, 'P'); c.rect(45, 35, 32, 3, 'p')
+    c.ellipse(36, 49, 18, 3.5, 'L'); c.ellipse(36, 49, 13, 2, 'l')
+    paste(c, puppy_anims()['sit'][0], 20, 22)
+    return _frame(c)
+
+
+def thumb_clinic():
+    c = Canvas(80, 56)
+    c.rect(0, 0, 80, 44, 'S')
+    for y in range(4, 40, 8):
+        for x in range(3 + (4 if (y // 8) % 2 else 0), 80, 8):
+            c.put(x, y, 's')
+    c.rect(0, 44, 80, 12, 'W'); c.rect(0, 44, 80, 1, 'K'); c.rect(0, 50, 80, 1, 'E')
+    box(c, 56, 6, 18, 22, 'Y'); c.rect(59, 10, 12, 1, 'K'); c.rect(59, 14, 9, 1, 'y'); c.rect(59, 18, 11, 1, 'y'); c.rect(59, 22, 8, 1, 'y')
+    box(c, 14, 46, 4, 9, 'S'); box(c, 52, 46, 4, 9, 'S')
+    box(c, 10, 40, 52, 7, 'W'); box(c, 14, 37, 44, 4, 'M')
+    paste(c, young_anims_l2()['sit'][0], 16, -1)
+    return _frame(c)
+
+
+def thumb_park():
+    """Level 3 is not built: a frosted park with the adult dog as a mystery silhouette."""
+    c = Canvas(80, 56)
+    c.rect(0, 0, 80, 56, 'S')
+    blob(c, 66, 10, 5, 5, 'Y', 'y'); c.ellipse(36, 9, 7, 2.5, 'W'); c.ellipse(41, 7, 4, 2.5, 'W')
+    c.ellipse(60, 44, 34, 12, 'M'); c.rect(0, 40, 80, 16, 'm')
+    for x in range(2, 80, 5):
+        c.put(x, 42 + (x * 3) % 5, 'G')
+    c.ellipse(40, 52, 26, 3, 'E')
+    box(c, 8, 20, 4, 22, 'd'); blob(c, 10, 16, 9, 8, 'm', 'G', light='M')
+    dog = adult_anims()['idle'][0]
+    for j in range(dog.h):
+        for i in range(dog.w):
+            if dog.px[j][i]:
+                c.put(28 + i, 6 + j, 'l')
+    for y in range(56):
+        for x in range(80):
+            if x % 2 == 0 and y % 2 == 0 and c.px[y][x] != 'l':
+                c.px[y][x] = 'L'
+    return _frame(c)
+
+
+def pin():
+    c = Canvas(8, 9)
+    c.ellipse(4, 3.5, 3, 3, 'R', light='N'); c.rect(4, 6, 1, 2, 'E')
+    return c.outline()
+
+
+def hl(cv, col='Y'):
+    """Preview only: the hover highlight the game draws (a 1 px butter outline round the sprite's shape)."""
+    out = Canvas(cv.w + 2, cv.h + 2)
+    paste(out, cv, 1, 1)
+    for y in range(out.h):
+        for x in range(out.w):
+            if out.px[y][x] is None and any(out.get(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                out.px[y][x] = col
+    return out
+
+
+def group8():
+    U, S = 'assets/ui/', 'assets/screens/'
+    out = {}
+    d = 'Dialogue box (blocks the game until OK)'
+    out[U + 'dialog_panel.png'] = ([panel(24, 24, 'W', ring='P', lip='E')], None, {'section': d, 'anim': 'dialogue panel', 'note': 'Nine-slice, corners 7px. Bottom third of the screen'})
+    out[U + 'portrait_frame.png'] = ([panel(50, 50, 'E', ring='W')], None, {'section': d, 'anim': 'portrait frame', 'note': 'Behind the parent or vet bust'})
+    out[U + 'nameplate_parent.png'] = ([panel(12, 12, 'P', lip='p', insets=(2, 1))], None, {'section': d, 'anim': 'name plate: parent', 'note': 'Nine-slice, corners 4px'})
+    out[U + 'nameplate_vet.png'] = ([panel(12, 12, 'S', lip='s', insets=(2, 1))], None, {'section': d, 'anim': 'name plate: vet', 'note': 'Nine-slice, corners 4px'})
+    m = 'Demos and help'
+    out[U + 'hand.png'] = (hand_frames(), None, {'section': m, 'anim': 'ghost hand', 'note': 'Point, then press. Plays taps and drags in demos'})
+    out[U + 'tap_ring.png'] = (tap_ring_frames(), None, {'section': m, 'anim': 'tap ring', 'note': 'Ripples out where the hand taps'})
+    out[U + 'demo_dot.png'] = ([demo_dot()], None, {'section': m, 'anim': 'path dot', 'note': 'Dotted path of a drag'})
+    out[U + 'icon_help.png'] = ([icon('help')], None, {'section': m, 'anim': 'help', 'note': 'HUD button: replay the demo'})
+    s = 'Level select'
+    out[S + 'select_bg.png'] = ([draw_select_bg()], None, {'section': 'bg', 'anim': 'cork board'})
+    out[U + 'level_card.png'] = ([panel(20, 20, 'W', lip='E')], None, {'section': s, 'anim': 'level card', 'note': 'Nine-slice, corners 6px'})
+    out[U + 'pin.png'] = ([pin()], None, {'section': s, 'anim': 'push pin', 'note': 'Holds each card on the board'})
+    out[U + 'tag_soon.png'] = ([panel(12, 12, 'Y', lip='y', insets=(2, 1))], None, {'section': s, 'anim': 'coming soon tag', 'note': 'Nine-slice, corners 4px'})
+    out[U + 'icon_lock.png'] = ([icon('lock')], None, {'section': s, 'anim': 'lock', 'note': 'Level not built yet'})
+    for coat, cols in COATS.items():
+        out[S + f'thumb_home_{coat}.png'] = ([thumb_home()], cols, {'section': s, 'anim': 'Level 1 thumbnail', 'coat': coat, 'note': 'First Day Home'})
+        out[S + f'thumb_clinic_{coat}.png'] = ([thumb_clinic()], cols, {'section': s, 'anim': 'Level 2 thumbnail', 'coat': coat, 'note': 'Check-up Day'})
+    out[S + 'thumb_park.png'] = ([thumb_park()], None, {'section': s, 'anim': 'Level 3 thumbnail', 'note': 'Frosted: coming soon'})
+    t = 'Time cards (a jump in time between story beats)'
+    out[S + 'timecard_bg.png'] = ([draw_timecard_bg()], None, {'section': 'bg', 'anim': 'time card'})
+    notes = {'morning': 'Saturday morning, One morning', 'afternoon': 'Later that afternoon', 'evening': 'That evening',
+             'night': 'That night', 'later': 'Two months later, A few months later'}
+    for k in TIME_ICONS:
+        out[U + f'time_{k}.png'] = ([time_icon(k)], None, {'section': t, 'anim': k, 'note': notes[k]})
+    f = 'Spot the difference (Level 2)'
+    out[U + 'found_ring.png'] = ([found_ring(44, 38)], None, {'section': f, 'anim': 'found ring', 'note': 'Round a difference in a close-up'})
+    out[U + 'found_ring_small.png'] = ([found_ring(20, 18)], None, {'section': f, 'anim': 'found ring (small)', 'note': 'Round a part in the big pictures'})
+    out[U + 'icon_magnifier.png'] = ([icon('magnifier')], None, {'section': f, 'anim': 'magnifier', 'note': 'Found counter in the HUD'})
+    return out
+
+
+def hud8(fill_len, name, task_icon, task_label, state='green'):
+    """The HUD with the new ? button (the task card moves left to make room)."""
+    frame, fills, heart = meter_parts()
+    fill = Canvas(62, 6); fill.px = [row[:fill_len] + [None] * (62 - fill_len) for row in fills[state].px]
+    ci, bc = panel(18, 18, 'W', ring='E'), button('W', 'E', 'Y')[0]
+    return [('@canvas', heart, 8, 8, 2), ('@canvas', frame, 36, 10, 2), ('@canvas', fill, 38, 12, 2),
+            ('@text', 172, 9, 120, name, 16, INK, 'left'),
+            ('@canvas', nine(ci, 96, 16, 6), 362, 6, 2), ('@canvas', icon(task_icon), 370, 6, 2),
+            ('@text', 406, 13, 150, task_label, 14, INK, 'left'),
+            ('@canvas', nine(bc, 16, 16, 5), 564, 6, 2), ('@canvas', icon('help'), 564, 6, 2),
+            ('@canvas', nine(bc, 16, 16, 5), 604, 6, 2), ('@canvas', icon('pause'), 604, 6, 2)]
+
+
+def g8_mockups():
+    bm, bc = button('M', 'm', 'Y')[0], button('W', 'E', 'Y')[0]
+    ci = panel(18, 18, 'W', ring='E')
+    card, tag = panel(20, 20, 'W', lip='E'), panel(12, 12, 'Y', lip='y', insets=(2, 1))
+    t = lambda x, y, w, s, size, col=INK, al='center': ('@text', x, y, w, s, size, col, al)
+    W2 = (640, 360)
+
+    sel = [('@canvas', draw_select_bg(), 0, 0, 2),
+           ('@canvas', nine(bc, 40, 15, 5), 12, 10, 2), t(12, 15, 80, 'Back', 15),
+           t(0, 13, 640, 'Choose a level', 22),
+           ('@canvas', nine(bc, 70, 15, 5), 488, 10, 2), t(488, 15, 140, 'Change dog', 15)]
+    cards = [('thumb_home', 'Level 1', 'First Day Home', 'Puppy · 2 tasks', False),
+             ('thumb_clinic', 'Level 2', 'Check-up Day', 'Young dog · 2 tasks', False),
+             ('thumb_park', 'Level 3', 'Park Day', '', True)]
+    for i, (th, t1, t2, t3, locked) in enumerate(cards):
+        x, y = 40 + i * 192, 72
+        cv = nine(card, 88, 100, 6)
+        sel.append(('@canvas', hl(cv) if i == 0 else cv, x - (2 if i == 0 else 0), y - (2 if i == 0 else 0), 2))
+        sel.append(('@canvas', thumb_park(), x + 8, y + 8, 2) if locked else (f'assets/screens/{th}_caramel.png', x + 8, y + 8, 2))
+        sel.append(('@canvas', pin(), x + 80, y - 6, 2))
+        sel += [t(x, y + 128, 176, t1, 18), t(x, y + 150, 176, t2, 15)]
+        if locked:
+            sel += [('@canvas', icon('lock'), x + 72, y + 48, 2), ('@canvas', nine(tag, 50, 12, 4), x + 38, y + 170, 2),
+                    t(x + 38, y + 174, 100, 'Coming soon', 13)]
+        else:
+            sel.append(t(x, y + 174, 176, t3, 12, '#8a6f66'))
+
+    def room(task_icon, label):
+        return [('assets/bg/living_room.png', 0, 0, 2), ('assets/sprites/bowl_empty.png', (SPOTS['bowl'] - 11) * 2, (GROUND_Y - 10) * 2, 2),
+                ('assets/ui/icon_treat.png', 576, 180, 2)] + hud8(48, 'Biscuit', task_icon, label)
+
+    dlg = room('pad', 'Potty time  2 of 2') + [
+        ('assets/sprites/puppy_caramel_circle.png', 268, 270, 2),
+        ('@rect', 0, 0, 640, 360, 'rgba(62,42,36,0.28)'),
+        ('@canvas', nine(panel(24, 24, 'W', ring='P', lip='E'), 312, 57, 7), 8, 238, 2),
+        ('@canvas', panel(50, 50, 'E', ring='W'), 22, 246, 2), ('assets/sprites/parent_talk.png', 24, 248, 2),
+        ('@canvas', nine(panel(12, 12, 'P', lip='p', insets=(2, 1)), 46, 12, 4), 136, 226, 2), t(136, 230, 92, 'Parent', 14),
+        t(140, 254, 360, 'Biscuit is sniffing and circling. That means "I need to go!" Drag the treat from the counter to lead them to the pad.', 18, INK, 'left'),
+        ('@canvas', nine(bm, 48, 16, 5), 520, 306, 2), t(520, 312, 96, 'OK', 18)]
+
+    hand = hand_frames()[0]
+    pts = [((1 - u) ** 2 * 592 + 2 * (1 - u) * u * 330 + u ** 2 * 96, (1 - u) ** 2 * 196 + 2 * (1 - u) * u * 170 + u ** 2 * 300)
+           for u in [i / 12 for i in range(13)]]
+    hx, hy = pts[7]
+    demo = room('pad', 'Potty time  2 of 2') + [
+        ('@canvas', draw_prop('pad'), 24, 312, 2), ('assets/sprites/puppy_caramel_circle.png', 268, 270, 2),
+        ('@rect', 0, 0, 640, 360, 'rgba(62,42,36,0.45)')]
+    demo += [('@canvas', demo_dot(), round(x) - 6, round(y) - 6, 2) for i, (x, y) in enumerate(pts) if i not in (6, 7, 8)]
+    demo += [('@canvas', icon('treat'), round(hx) - 16, round(hy) - 22, 2), ('@canvas', hand, round(hx) - HAND_TIP[0] * 2, round(hy) - HAND_TIP[1] * 2 - 4, 2),
+             ('@canvas', nine(ci, 216, 22, 6), 104, 52, 2), ('@canvas', icon('bulb'), 114, 58, 2),
+             t(152, 66, 360, 'Drag the treat. Biscuit follows it to the pad.', 16, INK, 'left'),
+             ('@canvas', nine(bm, 56, 16, 5), 440, 296, 2), t(440, 302, 112, 'Got it!', 17)]
+
+    kib = draw_food_big('kibble')
+    hover = [('assets/bg/counter_closeup.png', 0, 0, 2),
+             ('@canvas', hl(kib), (COUNTER_SLOTS[0] - 24) * 2 - 2, (COUNTER_TOP_Y - 48) * 2 - 2, 2),
+             ('assets/sprites/foodbig_chocolate.png', (COUNTER_SLOTS[1] - 24) * 2, (COUNTER_TOP_Y - 48) * 2, 2)] + hud8(40, 'Biscuit', 'bowl', 'Snack time  1 of 2') + [
+             ('@canvas', nine(ci, 64, 13, 6), (COUNTER_SLOTS[0] - 32) * 2, 290, 2), t((COUNTER_SLOTS[0] - 32) * 2, 296, 128, 'Puppy kibble', 14),
+             ('@canvas', nine(ci, 64, 13, 6), (COUNTER_SLOTS[1] - 32) * 2, 290, 2), t((COUNTER_SLOTS[1] - 32) * 2, 296, 128, 'Chocolate bar', 14),
+             ('@canvas', paw_cursor(), 232, 196, 1)]
+
+    tc = [('@canvas', draw_timecard_bg(), 0, 0, 2), ('@canvas', time_icon('afternoon'), 288, 82, 2),
+          t(0, 166, 640, 'Later that afternoon', 26), t(560, 6, 72, 'Skip', 13, INK, 'right'),
+          t(400, 336, 214, 'click to continue', 11, '#8a6f66', 'right')]
+    return [('Level select (all built levels open; the hovered card has the highlight)', W2, sel),
+            ('Blocking dialogue: the scene is dimmed and nothing can be tapped until OK', W2, dlg),
+            ('Demo: the ghost hand drags the treat along a dotted path (first time, or the ? button)', W2, demo),
+            ('Hover highlight replaces the rings: a butter outline round whatever is under the pointer', W2, hover),
+            ('Time card between story beats', W2, tc)]
+
+
+ICONS8['bath'] = lambda c: (c.rect(2, 8, 12, 5, 'W'), c.rect(2, 11, 12, 2, 'E'), c.rect(3, 13, 2, 2, 'Y'), c.rect(11, 13, 2, 2, 'Y'),
+                            c.ellipse(5, 6, 2, 2, 'S'), c.ellipse(9, 4, 2.5, 2.5, 'S'), c.put(9, 3, 'w'), c.ellipse(12, 6, 1.5, 1.5, 'S'))
+
+
+# ---------------------------------------------------------------- group 11: Level 3 (the walk, the park, fetch, a new friend), the finale, extras
+FONT3x5['K'] = ['101', '101', '110', '101', '101']
+FONT3x5['N'] = ['101', '111', '111', '111', '101']
+FONT5x7['K'] = ['10001', '10010', '10100', '11000', '10100', '10010', '10001']
+
+
+def adult_anims_l3():
+    """The adult dog's park poses (idle and wag are in group 6)."""
+    D = lambda **kw: draw_dog(ADULT, **kw)
+    step = lambda **kw: [D(legs=(1, -1, -1, 1), lift=(0, 1, 1, 0), **kw), D(body_dy=-1, **kw),
+                         D(legs=(-1, 1, 1, -1), lift=(1, 0, 0, 1), **kw), D(body_dy=-1, **kw)]
+    gallop = lambda **kw: [D(legs=(3, -2, 3, -2), lift=(2, 0, 0, 3), tail=70, head=(1, 0), body_dy=-1, **kw),
+                           D(lift=(1, 1, 1, 1), tail=80, head=(1, -1), body_dy=-2, **kw),
+                           D(legs=(-2, 3, -2, 3), lift=(0, 3, 2, 0), tail=70, head=(1, 0), body_dy=-1, **kw),
+                           D(tail=75, head=(1, 0), **kw)]
+    stress = dict(body_dy=2, tuck=True, ear=(-2, 2))
+    return {
+        'walk': step(tail=45), 'run': gallop(), 'carry': step(tail=60, ball=True),
+        'tired': step(tail=15, mouth='pant', head=(0, 2)),                                   # slow, head low, panting
+        'pant': [D(tail=15, mouth='pant', eyes='squint', body_dy=1, head=(0, 2)), D(tail=15, mouth='pant', eyes='closed', body_dy=2, head=(0, 2))],
+        'flop': [D(pose='lie', head=(1, 8), tail=-15, eyes='closed', mouth='pant', ear=(0, 2)),
+                 D(pose='lie', head=(1, 8), tail=-15, eyes='squint', mouth='pant', ear=(0, 2))],
+        'rest': [D(pose='lie', head=(1, 8), tail=-5, eyes='closed', ear=(0, 2)), D(pose='lie', head=(1, 8), tail=5, eyes='closed', ear=(0, 2))],
+        'drink': [D(head=(3, 9), tail=60, eyes='closed', mouth='eat'), D(head=(3, 10), tail=75, eyes='closed')],
+        'sit': [D(pose='sit', tail=15), D(pose='sit', tail=25, eyes='closed')],
+        'lunge': [D(legs=(2, 2, 4, 4), lift=(0, 0, 2, 3), head=(3, -2), tail=70, mouth='open', ear=(1, -1)),
+                  D(legs=(2, 2, 4, 4), lift=(0, 0, 3, 2), head=(3, -1), tail=85, mouth='open', ear=(1, -1))],
+        'sniff': [D(head=(2, 7), tail=30, ear=(0, 1)), D(head=(2, 8), tail=35, ear=(0, 1))],
+        'nervous': [D(head=(-1, 3), eyes='sad', **stress), D(head=(-2, 3), eyes='sad', **stress)],
+        'stress': [D(head=(-1, 2), eyes='whale', **stress), D(head=(-1, 2), eyes='whale', mouth='lick', **stress),
+                   D(head=(-1, 2), eyes='whale', **stress), D(head=(-1, 1), eyes='closed', mouth='yawn', **stress)],
+        'duck': [D(head=(-3, 4), eyes='squint', tail=10, ear=(-2, 2), body_dy=2), D(head=(-3, 5), eyes='squint', tail=5, ear=(-2, 2), body_dy=2)],
+        'sad': [D(pose='lie', head=(1, 8), tail=-15, eyes='sad', ear=(0, 2)), D(pose='lie', head=(1, 8), tail=-15, eyes='closed', ear=(0, 2))],
+    }
+
+
+# ---- the walk to the park (a 960-wide street that scrolls; the kid holds the leash)
+KID_H = 62                                                                    # kid sprites are cropped so the feet sit on the bottom
+WALK = dict(w=960, ground=158, kid_x=56, hand=(35, -29), collar=(3, -25), slack=26, tight=38, gate=868,
+            distractions=(('squirrel', 330, 140), ('sandwich', 560, 161), ('cat', 752, 105)))   # mirrored in LEVEL3.walk
+
+
+def kid_walk_frames():
+    return [crop(kid('leash', s), 0, 0, 40, KID_H) for s in range(4)]
+
+
+def leash(tight):
+    n = WALK['tight' if tight else 'slack']
+    c = Canvas(n + 1, 12)
+    for x in range(n + 1):
+        t = x / n
+        y = round(4 * t + (0 if tight else 6 * math.sin(math.pi * t)))
+        c.put(x, y, 'R'); c.put(x, y + 1, 'r')
+    return c
+
+
+def tree(c, x, base, h=34, r=16):
+    c.rect(x - 2, base - h, 5, h, 'd'); c.rect(x - 2, base - h, 1, h, 'K'); c.rect(x + 2, base - h, 1, h, 'K')
+    blob(c, x, base - h - r // 2, r, r * 0.85, 'm', 'K', shade='G', light='M')
+
+
+def lamp(c, x, base):
+    c.rect(x, base - 52, 2, 52, 'K'); box(c, x - 3, base - 60, 8, 8, 'Y'); c.rect(x - 4, base - 61, 10, 2, 'K')
+    c.rect(x - 2, base, 6, 2, 'K')
+
+
+def picket(c, x0, x1, top, base):
+    c.rect(x0, top + 5, x1 - x0, 4, 'K'); c.rect(x0, top + 6, x1 - x0, 2, 'W')
+    c.rect(x0, top + 13, x1 - x0, 4, 'K'); c.rect(x0, top + 14, x1 - x0, 2, 'W')
+    for x in range(x0, x1, 6):
+        c.rect(x - 1, top, 6, base - top, 'K'); c.rect(x, top + 1, 4, base - top - 1, 'W')
+        c.put(x - 1, top, None); c.put(x + 4, top, None)
+
+
+def draw_street():
+    """The walk: houses, gardens and a pavement, ending at the park gate. 960 wide; the game slides it left."""
+    W_ = WALK['w']
+    c = Canvas(W_, 180)
+    c.rect(0, 0, W_, 132, 'S')
+    for x, y in ((40, 20), (200, 30), (390, 16), (540, 34), (700, 22), (860, 28)):
+        c.ellipse(x, y, 16, 5, 'W'); c.ellipse(x + 9, y - 3, 9, 5, 'W'); c.ellipse(x - 10, y + 1, 8, 4, 'W')
+    walls, roofs = ('P', 'Y', 'M', 'L', 'E'), ('R', 'd', 'G', 'V', 'o')
+    for i, x in enumerate(range(10, 760, 140)):
+        house(c, x, 64, 44, 112, walls[i % 5], roofs[i % 5], ('d', 'R', 'S', 'D', 'G')[i % 5])
+        tree(c, x + 104, 112, 30, 14)
+    c.rect(0, 112, W_, 20, 'M')                                                   # front gardens
+    for x in range(4, W_, 9):
+        c.put(x, 116 + (x * 7) % 9, 'G'); c.put(x + 3, 122 + (x * 5) % 7, 'm')
+    for x in range(14, 760, 140):
+        picket(c, x, x + 100, 104, 132)
+        for fx in range(x + 4, x + 96, 12):
+            c.pattern(fx, 124, ['.R.', 'RYR', '.R.'] if (fx // 12) % 2 else ['.L.', 'LYL', '.L.'])
+    c.rect(0, 132, W_, 8, 'm'); c.rect(0, 132, W_, 1, 'G')                      # grass verge
+    c.rect(0, 140, W_, 26, 'W'); c.rect(0, 140, W_, 1, 'K')                       # pavement
+    for x in range(0, W_, 24):
+        c.rect(x, 141, 1, 25, 'E')
+    c.rect(0, 153, W_, 1, 'E')
+    c.rect(0, 166, W_, 3, 'P'); c.rect(0, 166, W_, 1, 'K'); c.rect(0, 168, W_, 1, 'p')   # kerb
+    c.rect(0, 169, W_, 11, 'l')                                                   # road
+    for x in range(8, W_, 32):
+        c.rect(x, 175, 14, 2, 'W')
+    for x in range(120, 760, 200):
+        lamp(c, x, 140)
+    # the park: hedge, gate pillars and an arch with the sign
+    gx = WALK['gate']
+    c.rect(gx - 60, 96, W_ - gx + 60, 36, 'm')
+    for x in range(gx - 60, W_, 10):
+        blob(c, x + 5, 98, 7, 6, 'm', 'K', shade='G', light='M')
+    tree(c, gx - 30, 112, 44, 22)
+    tree(c, gx + 120, 112, 40, 20)
+    for px_ in (gx, gx + 70):
+        box(c, px_, 72, 14, 68, 'R'); c.rect(px_ + 1, 73, 12, 3, 'N')
+        for y in range(80, 138, 6):
+            c.rect(px_ + 1, y, 12, 1, 'r')
+        box(c, px_ - 2, 68, 18, 6, 'E')
+    c.rect(gx + 14, 132, 56, 8, 'T'); c.rect(gx + 14, 132, 56, 1, 't')           # the path into the park
+    for i in range(56):
+        y = round(66 - 8 * math.sin(math.pi * i / 55))
+        c.rect(gx + 14 + i, y, 1, 2, 'K')
+    box(c, gx + 20, 44, 44, 14, 'Y'); big_text(c, gx + 23, 47, 'PARK', 'K', 1)
+    c.rect(gx + 41, 58, 2, 3, 'K')
+    return c
+
+
+def squirrel_frames():
+    """Sitting up with a nut, then flicking its big tail."""
+    out = []
+    for flick in (0, 1):
+        c = Canvas(20, 18)
+        for i, (x, y) in enumerate(((5, 15), (3, 12), (2, 9), (3, 6), (5, 4))):            # the bushy tail
+            c.ellipse(x + flick * (i // 3), y - flick, 3, 3, 'o' if i % 2 else 'O')
+        c.ellipse(11, 12, 4, 5, 'O', shade='o'); c.ellipse(14, 7, 3.5, 3, 'O'); c.rect(13, 3, 2, 2, 'O')
+        c.put(15, 6, 'k'); c.put(17, 8, 'k'); c.rect(11, 13, 3, 2, 'W')
+        c.rect(15, 10, 3, 3, 'd'); c.put(16, 10, 'D')                                       # the nut
+        c.rect(9, 16, 3, 1, 'o'); c.rect(13, 16, 3, 1, 'o')
+        out.append(c.outline())
+    return out
+
+
+def sandwich():
+    c = Canvas(20, 10)
+    c.rect(1, 6, 18, 3, 'T'); c.rect(1, 5, 18, 1, 'M'); c.rect(2, 4, 16, 1, 'R'); c.rect(1, 2, 18, 2, 'T')
+    c.rect(2, 1, 16, 1, 't'); c.pattern(4, 4, ['Y...Y...Y.'])
+    return c.outline()
+
+
+def cat_frames():
+    """A cat on the fence, its tail swishing."""
+    out = []
+    for swish in (0, 1):
+        c = Canvas(22, 18)
+        c.ellipse(9, 11, 6, 5, 'H', shade='h'); c.ellipse(15, 6, 4, 3.6, 'H')
+        c.pattern(12, 1, ['H...H', 'HH.HH']); c.put(16, 5, 'Y'); c.put(18, 5, 'Y'); c.put(17, 7, 'N')
+        for i in range(6):
+            c.rect(3 - (i // 2 if swish else 0), 12 + (i // 2 if swish else i), 2, 2, 'H')
+        c.rect(8, 15, 2, 2, 'W'); c.rect(12, 15, 2, 2, 'W')
+        out.append(c.outline())
+    return out
+
+
+# ---- the park
+PARK = dict(ground=152, kid_x=80, dog_x=124, ball=(146, 150), shade=(4, 138, 84, 24), rest_x=44, bowl=(262, 153),
+            land=(168, 262), sam_x=200)                                           # mirrored in LEVEL3.park
+
+
+def draw_park():
+    c = Canvas(320, 180)
+    c.rect(0, 0, 320, 100, 'S')
+    for y in range(0, 40, 5):
+        c.rect(0, y, 320, 1, 'S' if y % 10 else 's')
+    for x, y in ((60, 26), (170, 16), (230, 36)):
+        c.ellipse(x, y, 15, 5, 'W'); c.ellipse(x + 8, y - 3, 8, 5, 'W')
+    for x in range(-10, 330, 26):                                                 # far trees
+        blob(c, x, 88, 15, 12, 'G', 'K', light='m')
+    c.rect(0, 96, 320, 84, 'm'); c.rect(0, 96, 320, 1, 'G')
+    for x in range(3, 320, 7):
+        c.put(x, 104 + (x * 13) % 56, 'G'); c.put(x + 2, 100 + (x * 7) % 60, 'M')
+    for x, y, col in ((120, 120, 'R'), (200, 114, 'Y'), (236, 130, 'L'), (100, 108, 'Y'), (300, 112, 'R'), (176, 126, 'L')):
+        c.pattern(x, y, ['.' + col + '.', col + 'Y' + col, '.' + col + '.'])
+    box(c, 140, 102, 40, 4, 'D'); box(c, 140, 94, 40, 4, 'D'); c.rect(144, 106, 2, 6, 'K'); c.rect(174, 106, 2, 6, 'K')   # bench
+    c.rect(0, 160, 320, 20, 'T'); c.rect(0, 160, 320, 1, 't')                      # the path
+    for x in range(6, 320, 15):
+        c.rect(x, 166 + x % 9, 3, 1, 't')
+    c.ellipse(292, 44, 9, 9, 'Y', shade='y')                                      # the sun (below the HUD)
+    for a in range(0, 360, 45):
+        c.rect(round(292 + 14 * math.cos(math.radians(a))) - 1, round(44 + 14 * math.sin(math.radians(a))) - 1, 3, 3, 'Y')
+    return c
+
+
+def park_tree():
+    c = Canvas(96, 122)
+    c.rect(40, 50, 12, 70, 'd'); c.rect(43, 50, 3, 70, 'D'); c.rect(36, 114, 20, 6, 'd')
+    for x, y, r in ((26, 40, 22), (66, 40, 22), (46, 24, 24), (20, 58, 14), (74, 60, 14), (46, 54, 20)):
+        c.ellipse(x, y, r, r * 0.8, 'm', shade='G', light='M')
+    for x, y in ((30, 30), (60, 22), (70, 46), (24, 52), (50, 40)):
+        c.pattern(x, y, ['.G.', 'G.G'])
+    return c.outline()
+
+
+def park_shade():
+    x, y, w, h = PARK['shade']
+    c = Canvas(w, h)
+    c.ellipse(w / 2, h / 2, w / 2, h / 2, 'G')
+    for yy in range(h):
+        for xx in range(w):
+            if c.px[yy][xx] and (xx + yy) % 5 == 0:
+                c.px[yy][xx] = 'm'
+    return c
+
+
+def fountain():
+    c = Canvas(44, 52)
+    box(c, 4, 34, 36, 16, 'E'); c.rect(5, 46, 34, 3, 'W'); c.rect(5, 35, 34, 1, 'w')
+    c.ellipse(22, 36, 16, 3, 'S'); c.ellipse(22, 36, 11, 1.6, 's')
+    box(c, 18, 16, 8, 20, 'E'); box(c, 12, 12, 20, 6, 'E')
+    for x, y in ((22, 2), (18, 5), (26, 5), (15, 9), (29, 9)):
+        c.rect(x - 1, y, 2, 4, 'S'); c.put(x, y, 'w')
+    return c.outline()
+
+
+def water_bowl(full):
+    c = Canvas(22, 12)
+    c.ellipse(11, 4, 9, 2.6, 'K'); c.rect(3, 4, 16, 6, 'S'); c.rect(4, 8, 14, 2, 's'); c.rect(2, 3, 18, 1, 'W')
+    c.ellipse(11, 4, 7, 1.6, 'S' if full else 's')
+    if full:
+        c.put(8, 4, 'w'); c.put(13, 4, 'w')
+    return c.outline()
+
+
+def tennis_ball():
+    c = Canvas(8, 8)
+    c.ellipse(4, 4, 3, 3, 'Y', shade='y'); c.pattern(2, 2, ['M..', '.MM', '...']); c.put(3, 2, 'w')
+    return c.outline()
+
+
+def ball_shadow():
+    c = Canvas(8, 3)
+    c.ellipse(4, 1.5, 3.5, 1.2, 'G')
+    return c
+
+
+# ---- Sam, the child who wants to say hello (40x62, faces right; flipped in game to face the dog)
+def sam(pose='stand', step=0):
+    c = Canvas(40, 64)
+    o = 4
+    skin, shade, hair, shirt, sshade = 'd', 't', 'k', 'O', 'o'
+    c.ellipse(9, 9 + o, 5, 5, hair); c.ellipse(21, 7 + o, 5, 5, hair)            # two puffs
+    c.ellipse(15, 13 + o, 8, 8, skin)
+    c.ellipse(15, 7 + o, 8, 4, hair); c.rect(8, 8 + o, 3, 6, hair)
+    c.rect(10, 13 + o, 2, 3, shade); c.put(23, 15 + o, shade)
+    if pose in ('run', 'wave'):
+        c.pattern(18, 13 + o, ['.kk.', 'k..k']); c.pattern(18, 18 + o, ['kkk', 'kNk', '.k.'])
+    else:
+        c.rect(19, 12 + o, 2, 3, 'k'); c.put(20, 12 + o, 'w'); c.pattern(19, 18 + o, ['k.k', '.k.'])
+    c.rect(19, 17 + o, 2, 1, 'N')
+    c.rect(13, 21 + o, 4, 3, shade)
+    c.ellipse(15, 27 + o, 9, 4, shirt); c.rect(6, 27 + o, 18, 14, shirt); c.rect(6, 38 + o, 18, 3, sshade)
+    c.pattern(11, 31 + o, ['.W.W.', 'WWWWW', '.WWW.', '..W..'])                    # a heart on the T-shirt
+    def back(dx=0):
+        c.rect(3, 27 + o, 4, 4, shirt); c.rect(3 + dx, 31 + o, 4, 11, skin)
+    if pose == 'run':
+        back(-1 if step else 1)
+        c.rect(23, 27 + o, 4, 4, shirt); c.rect(24 + (2 if step else -1), 31 + o, 4, 9, skin)
+    elif pose == 'hand':                                                         # a hand held out low, for a sniff
+        back(); c.rect(23, 27 + o, 4, 6, shirt); c.rect(25, 33 + o, 9, 4, skin); c.rect(33, 32 + o, 3, 3, skin)
+    elif pose == 'pet':                                                          # reaching forward and down to the chest
+        back(); c.rect(23, 27 + o, 5, 4, shirt); c.rect(27, 30 + o, 4, 4, skin); c.rect(30, 33 + o, 4, 4, skin); c.rect(33, 36 + o, 4, 3, skin)
+    elif pose == 'wave':
+        back(); c.rect(23, 9 + o, 4, 20, shirt); c.rect(23, 4 + o, 4, 5, skin)
+    else:
+        back(); c.rect(23, 27 + o, 4, 4, shirt); c.rect(23, 31 + o, 4, 11, skin)
+    f, b = (3, -3) if (pose in ('run', 'walk') and step) else (0, 0)
+    c.rect(8, 41 + o, 14, 3, 'G'); c.rect(8 + b, 44 + o, 6, 6, 'G'); c.rect(16 + f, 44 + o, 6, 6, 'G')
+    c.rect(9 + b, 50 + o, 4, 4, skin); c.rect(17 + f, 50 + o, 4, 4, skin)
+    c.rect(7 + b, 54 + o, 8, 3, 'W'); c.rect(16 + f, 54 + o, 9, 3, 'W'); c.rect(7 + b, 56 + o, 8, 1, 'S'); c.rect(16 + f, 56 + o, 9, 1, 'S')
+    return crop(c.outline(), 0, 0, 40, KID_H)
+
+
+SAM_POSES = {'run': 2, 'walk': 2, 'stand': 1, 'hand': 1, 'pet': 1, 'wave': 1}
+
+
+def sam_frames():
+    return {p: [sam(p, s) for s in range(n)] for p, n in SAM_POSES.items()}
+
+
+def draw_sam_bust(mouth='closed', blink=False):
+    """Sam's portrait for the dialogue box, framed like the parent's (48x48)."""
+    c = Canvas(48, 48)
+    c.ellipse(24, 47, 17, 10, 'O', shade='o'); c.pattern(21, 40, ['.W.W.', 'WWWWW', '.WWW.']); c.rect(21, 30, 6, 7, 't')
+    c.ellipse(12, 12, 7, 7, 'k'); c.ellipse(36, 12, 7, 7, 'k')
+    c.ellipse(24, 21, 10, 11, 'd')
+    c.ellipse(24, 13, 11, 6, 'k'); c.rect(14, 13, 3, 8, 'k'); c.rect(31, 13, 3, 8, 'k')
+    if blink:
+        c.rect(19, 21, 3, 1, 'k'); c.rect(27, 21, 3, 1, 'k')
+    else:
+        c.rect(19, 20, 2, 3, 'k'); c.put(20, 20, 'w'); c.rect(28, 20, 2, 3, 'k'); c.put(29, 20, 'w')
+    c.rect(17, 25, 2, 1, 'N'); c.rect(30, 25, 2, 1, 'N')
+    c.pattern(22, 26, ['kkkk', 'kNNk', '.kk.'] if mouth == 'open' else ['k..k', '.kk.'])
+    c.put(24, 24, 't')
+    return c.outline()
+
+
+def sam_bust_frames():
+    return {'talk': [draw_sam_bust('closed'), draw_sam_bust('open'), draw_sam_bust('closed'), draw_sam_bust('open')],
+            'idle': [draw_sam_bust(), draw_sam_bust(), draw_sam_bust(blink=True), draw_sam_bust()]}
+
+
+def sam_hand():
+    """Sam's hand, dragged onto the dog to choose where to pet."""
+    c = Canvas(14, 10)
+    c.rect(1, 3, 9, 5, 'd'); c.rect(9, 2, 4, 2, 'd'); c.rect(9, 4, 4, 1, 'd'); c.rect(9, 5, 4, 1, 'd'); c.rect(9, 6, 3, 1, 'd')
+    c.rect(2, 3, 2, 1, 't'); c.put(9, 4, 't'); c.put(9, 6, 't')
+    return c.outline()
+
+
+# ---- where Sam can pet the adult dog: the top of the head vs the side of the neck and chest
+def _adult_region(part, x, y):
+    return {'head': lambda: y <= 15 and 26 <= x <= 44, 'chest': lambda: 22 <= x <= 37 and 21 <= y <= 36}[part]()
+
+
+def adult_part(part, ring_it):
+    base = adult_anims()['idle'][0]
+    m = Canvas(48, 48)
+    for y in range(48):
+        for x in range(48):
+            if base.px[y][x] and _adult_region(part, x, y):
+                m.px[y][x] = 'W'
+    if not ring_it:
+        return m
+    c = Canvas(48, 48)
+    nb = ((1, 0), (-1, 0), (0, 1), (0, -1))
+    for y in range(48):
+        for x in range(48):
+            if m.px[y][x] is None and any(m.get(x + dx, y + dy) for dx, dy in nb):
+                c.px[y][x] = 'w'
+    for y in range(48):
+        for x in range(48):
+            if m.px[y][x] is None and c.px[y][x] is None and any(c.get(x + dx, y + dy) == 'w' for dx, dy in nb):
+                c.px[y][x] = 'Y'
+    return c
+
+
+# ---- icons for Level 3 (choices, thought bubbles, task cards, album)
+def _rays(c, cx, cy, r):
+    for a in range(0, 360, 60):
+        c.rect(round(cx + r * math.cos(math.radians(a))) - 1, round(cy + r * math.sin(math.radians(a))) - 1, 2, 2, 'Y')
+
+
+ICONS11 = {
+    'ball':  lambda c: (c.ellipse(8, 8, 6, 6, 'Y', shade='y'), c.pattern(3, 4, ['M.....', '.MM...', '...MMM', '......', '......', 'MMM...']),
+                        c.rect(5, 4, 2, 1, 'w')),
+    'hot':   lambda c: (_rays(c, 7, 7, 7), c.ellipse(7, 7, 4.5, 4.5, 'Y', shade='y'), c.pattern(11, 8, ['.S.', '.S.', 'SSS', 'SwS', '.S.'])),
+    'leash': lambda c: (c.ellipse(5, 5, 4, 4, 'R'), [c.rect(8 + i, 8 + i, 2, 2, 'R') for i in range(6)], c.rect(13, 12, 3, 3, 'Y')),
+    'park':  lambda c: (c.rect(7, 9, 3, 6, 'd'), c.ellipse(8, 6, 6, 5, 'm', shade='G', light='M')),
+    'water': lambda c: (c.ellipse(8, 9, 6, 1.6, 'S'), c.rect(3, 10, 11, 4, 'S'), c.rect(4, 13, 9, 1, 's'), c.rect(2, 9, 13, 1, 'W'),
+                        c.pattern(7, 1, ['.S.', 'SSS', 'SwS', '.S.'])),
+    'stop':  lambda c: c.pattern(3, 1, ['..F.F.F...', '..F.F.F.F.', '..F.F.F.F.', '..FFFFFFF.', 'F.FFFFFFF.', 'FFFFFFFFF.',
+                                         '.FFFFFFFF.', '.FFFFFFFF.', '..FFFFFF..', '..FFFFFF..', '...FFFF...', '...ffff...']),
+    'run':   lambda c: (c.pattern(1, 4, ['WWW...', '......', 'WWWW..', '......', '.WWW..']),
+                        c.pattern(6, 5, ['...RRR..', '..RRRRR.', 'RRRRRRRR', 'RRRRRRRR', 'WWWWWWWW'])),
+    'sniff': lambda c: (c.ellipse(10, 9, 4, 3, 'k'), c.put(9, 8, 'w'), c.put(8, 10, 'K'), c.put(11, 10, 'K'),
+                        c.pattern(1, 4, ['W.....', '.W....', '......', 'W.W...', '......', '.W....', 'W.....'])),
+    'space': lambda c: (c.pattern(0, 5, ['..W..........W..', '.WW..........WW.', 'WWWWW......WWWWW', '.WW..........WW.',
+                                         '..W..........W..']), c.rect(7, 4, 2, 7, 'R')),
+    'pet':   lambda c: (c.pattern(1, 7, ['...dddddd.....', '..dddddddddd..', '.ddddddddddddd', '.dddddddd.....', '..dddddd......']),
+                        c.pattern(9, 1, ['RR.RR', 'RRRRR', '.RRR.', '..R..'])),
+}
+
+
+def icon11(name):
+    c = Canvas(16, 16)
+    ICONS11[name](c)
+    if name == 'leash':                                                          # the handle's loop is open
+        c.ellipse(5, 5, 2, 2, 'W')
+        for y in range(16):
+            for x in range(16):
+                if c.px[y][x] == 'W':
+                    c.px[y][x] = None
+        c.outline()
+        c.ellipse(5, 5, 1.2, 1.2, 'K')
+        for y in range(16):
+            for x in range(16):
+                if c.px[y][x] == 'K' and ((x + 0.5 - 5) ** 2 + (y + 0.5 - 5) ** 2) < 2:
+                    c.px[y][x] = None
+        return c
+    return c.outline()
+
+
+# ---- Level 3 story panels (x 3 coats; the visible band is y 15..146)
+def draw_panel_leash():
+    """One sunny morning: the grown-up dog waits by the front door with its leash in its mouth."""
+    c = Canvas(320, 180)
+    wall_and_floor(c, 128)
+    box(c, 196, 30, 60, 98, 'W'); box(c, 200, 34, 52, 94, 'R'); c.rect(201, 35, 50, 1, 'N')       # the front door
+    box(c, 208, 42, 36, 22, 'S'); c.rect(226, 42, 1, 22, 'K'); c.rect(244, 84, 4, 4, 'Y')
+    for x in range(172, 196, 6):                                                    # coat hooks + a hat
+        c.rect(x, 50, 2, 4, 'd')
+    blob(c, 180, 60, 8, 5, 'M', 'K'); c.rect(172, 62, 18, 2, 'M')
+    box(c, 262, 108, 40, 20, 'D'); c.rect(263, 112, 38, 1, 'd')                     # shoe bench
+    paste(c, adult_anims_l3()['sit'][0], 132, 128 - 48)
+    for x, y in ((170, 102), (171, 105), (172, 108), (172, 111), (171, 114), (169, 117), (166, 119)):   # the leash hanging from its mouth
+        c.rect(x, y, 2, 3, 'R')
+    c.ellipse(164, 122, 4, 2.5, 'R'); c.ellipse(164, 122, 2, 1, 'W')
+    for x, y in ((128, 92), (184, 84)):
+        c.pattern(x, y, ['..Y..', '.YwY.', '..Y..'])
+    paste(c, kid('stand'), 66, 128 - 61)
+    paste(c, parent_body(), 22, 128 - PARENT_H)
+    return c
+
+
+def draw_panel_park_gate():
+    """At the park gate: green grass, the sun out, the dog wagging at the end of a loose leash."""
+    c = shift_up(crop(draw_street(), WALK['w'] - 320, 0, 320, 180), 14)
+    kx, g = 40, WALK['ground'] - 14
+    paste(c, crop(kid('leash', 0), 0, 0, 40, KID_H), kx, g - KID_H)
+    paste(c, leash(False), kx + WALK['hand'][0], g + WALK['hand'][1])
+    paste(c, adult_anims()['wag'][1], kx + WALK['hand'][0] + WALK['slack'] - WALK['collar'][0] - 24, g - 48)
+    return c
+
+
+def draw_panel_evening_home():
+    """That evening: the tired, happy dog asleep on the rug; the kid on the sofa with the photo album."""
+    c = draw_room()
+    for y in range(37, 79):                                                         # an orange evening sky in the window
+        for x in range(79, 129):
+            if c.px[y][x] in ('S', 'W'):
+                c.px[y][x] = 'O' if y < 58 else 'V'
+    for y in range(52, 94):
+        for x in range(16, 52):
+            if c.px[y][x] == 'S':
+                c.px[y][x] = 'O' if y < 72 else 'V'
+    for y in range(0, 135):                                                         # warm lamplight dims the wall
+        for x in range(320):
+            if c.px[y][x] == 'W' and (x + y) % 2 == 0:
+                c.px[y][x] = 'E'
+    box(c, 112, 100, 6, 34, 'D'); box(c, 104, 86, 22, 16, 'Y'); c.rect(105, 98, 20, 3, 'y')   # a lamp by the sofa
+    paste(c, adult_anims_l3()['rest'][0], 146, 166 - 48)
+    pixel_text(c, 192, 132, 'Z', 'l'); pixel_text(c, 197, 126, 'Z', 'l')
+    paste(c, kid('sit').flipped(), 152, 128 - 59)
+    box(c, 146, 94, 18, 12, 'R'); c.rect(154, 94, 1, 12, 'r'); c.rect(147, 96, 6, 8, 'W'); c.rect(156, 96, 6, 8, 'W')   # the album
+    return shift_up(c, 26)
+
+
+L3_PANELS = {'leash': draw_panel_leash, 'park_gate': draw_panel_park_gate, 'evening_home': draw_panel_evening_home}
+L3_LINES = {
+    'leash': ('parent', "{name} is all grown up and full of energy. Let's walk to the park!"),
+    'park_gate': ('parent', 'Here we are! Lots of room to run. Who wants to play fetch?'),
+    'evening_home': ('parent', "What a day! {name} is all grown up, and so are you. You're a Pawfect Parent!"),
+}
+
+
+# ---- the finale (an album spread with a photo from each level) and the level-select park card, now open
+def draw_finale_bg():
+    c = Canvas(320, 180)
+    c.rect(0, 0, 320, 180, 'D')
+    for y in range(0, 180, 9):
+        c.rect(0, y, 320, 1, 'd')
+    box(c, 14, 22, 292, 150, 'W'); c.rect(159, 23, 2, 148, 'E'); c.rect(15, 165, 290, 6, 'E')
+    for x0 in (18, 164):
+        for y in range(38, 160, 10):
+            c.rect(x0 + 4, y, 130, 1, 'E')
+    for i, x in enumerate((30, 122, 214)):
+        box(c, x, 54, 76, 86, 'W'); box(c, x + 6, 60, 64, 56, ('S', 'M', 'Y')[i]); c.rect(x + 7, 100, 62, 15, ('D', 'W', 'm')[i])
+        for cx, cy in ((x, 54), (x + 70, 54), (x, 134), (x + 70, 134)):               # photo corners
+            box(c, cx - 1, cy - 1, 8, 8, 'R')
+    box(c, 54, 2, 212, 26, 'P'); c.rect(55, 24, 210, 3, 'p'); c.rect(55, 3, 210, 1, 'W')       # the banner (words in game)
+    for x, y in ((24, 148), (292, 40), (300, 150), (118, 148), (206, 150)):
+        c.pattern(x, y, ['.R.R.', 'RRRRR', '.RRR.', '..R..'])
+    return c
+
+
+def thumb_park_open():
+    c = Canvas(80, 56)
+    c.rect(0, 0, 80, 56, 'S')
+    blob(c, 66, 10, 5, 5, 'Y', 'y'); c.ellipse(36, 9, 7, 2.5, 'W'); c.ellipse(41, 7, 4, 2.5, 'W')
+    c.ellipse(60, 44, 34, 12, 'M'); c.rect(0, 40, 80, 16, 'm')
+    for x in range(2, 80, 5):
+        c.put(x, 42 + (x * 3) % 5, 'G')
+    c.ellipse(40, 52, 26, 3, 'T')
+    box(c, 8, 20, 4, 22, 'd'); blob(c, 10, 16, 9, 8, 'm', 'G', light='M')
+    paste(c, adult_anims()['wag'][1], 26, 6)
+    paste(c, tennis_ball(), 64, 44)
+    return _frame(c)
+
+
+def hover_frame():
+    """Nine-slice hover highlight for places that are not sprites (the counter, a spot on the floor, the shade): butter outside, white in."""
+    c = Canvas(10, 10)
+    for y in range(10):
+        for x in range(10):
+            out_ = x in (0, 9) or y in (0, 9)
+            in_ = x in (1, 8) or y in (1, 8)
+            if out_ and not (x in (0, 9) and y in (0, 9)):
+                c.px[y][x] = 'Y'
+            elif in_ and not out_:
+                c.px[y][x] = 'Y' if (x in (1, 8) and y in (1, 8)) else 'w'
+    return c
+
+
+def group11():
+    out, S_, U, B, SC = {}, 'assets/sprites/', 'assets/ui/', 'assets/bg/', 'assets/screens/'
+    a = 'The adult dog at the park'
+    anims = adult_anims_l3()
+    notes = {'walk': 'On the leash', 'run': 'Chasing the ball', 'carry': 'Bringing the ball back', 'tired': 'Slowing down, panting (a sign!)',
+             'pant': 'Hot and tired: tongue out', 'flop': 'Too hot: flops down and will not move', 'rest': 'Resting in the shade',
+             'drink': 'Drinking water', 'sit': 'Stopped and calm on the walk', 'lunge': 'Pulling at a squirrel',
+             'sniff': 'Sniffing a new friend', 'nervous': 'Ears back, tail tucked: someone ran at them',
+             'stress': 'Stress signals: whale eye, lip lick, yawn, tucked tail', 'duck': 'Ducks away from a hand over the head',
+             'sad': 'Retry screen'}
+    for coat, cols in COATS.items():
+        for name, frames in anims.items():
+            out[S_ + f'adult_{coat}_{name}.png'] = (frames, cols, {'section': a, 'anim': name, 'coat': coat, 'note': notes[name]})
+    w = 'The walk to the park'
+    out[B + 'street.png'] = ([draw_street()], None, {'section': 'bg', 'anim': 'street'})
+    out[S_ + 'kid_walk.png'] = (kid_walk_frames(), None, {'section': w, 'anim': 'kid walking', 'note': 'Holding the leash'})
+    out[S_ + 'leash_slack.png'] = ([leash(False)], None, {'section': w, 'anim': 'leash: loose', 'note': 'Walking nicely'})
+    out[S_ + 'leash_tight.png'] = ([leash(True)], None, {'section': w, 'anim': 'leash: tight', 'note': 'The dog is pulling'})
+    out[S_ + 'squirrel.png'] = (squirrel_frames(), None, {'section': w, 'anim': 'squirrel', 'note': 'Distraction 1'})
+    out[S_ + 'sandwich.png'] = ([sandwich()], None, {'section': w, 'anim': 'dropped sandwich', 'note': 'Distraction 2'})
+    out[S_ + 'cat.png'] = (cat_frames(), None, {'section': w, 'anim': 'cat on the fence', 'note': 'Distraction 3'})
+    p = 'The park: fetch, rest and water'
+    out[B + 'park.png'] = ([draw_park()], None, {'section': 'bg', 'anim': 'park'})
+    out[S_ + 'park_tree.png'] = ([park_tree()], None, {'section': p, 'anim': 'shady tree', 'note': 'Tap it (or its shade) to rest'})
+    out[S_ + 'park_shade.png'] = ([park_shade()], None, {'section': p, 'anim': 'shade', 'note': 'Under the tree'})
+    out[S_ + 'fountain.png'] = ([fountain()], None, {'section': p, 'anim': 'water fountain'})
+    out[S_ + 'water_bowl.png'] = ([water_bowl(False), water_bowl(True)], None, {'section': p, 'anim': 'water bowl', 'note': 'Empty, then full: drag it to the dog'})
+    out[S_ + 'ball.png'] = ([tennis_ball()], None, {'section': p, 'anim': 'tennis ball', 'note': 'Drag back and let go to throw'})
+    out[S_ + 'ball_shadow.png'] = ([ball_shadow()], None, {'section': p, 'anim': 'ball shadow'})
+    out[S_ + 'kid_park.png'] = ([crop(kid('stand'), 0, 0, 40, KID_H)], None, {'section': p, 'anim': 'kid', 'note': 'Stands by during fetch'})
+    s = 'Meeting a new friend: Sam'
+    for name, frames in sam_frames().items():
+        out[S_ + f'sam_{name}.png'] = (frames, None, {'section': s, 'anim': name})
+    for name, frames in sam_bust_frames().items():
+        out[S_ + f'sam_bust_{name}.png'] = (frames, None, {'section': s, 'anim': f'portrait: {name}'})
+    out[S_ + 'sam_hand.png'] = ([sam_hand()], None, {'section': s, 'anim': "Sam's hand", 'note': 'Dragged onto the dog to pet'})
+    out[U + 'nameplate_sam.png'] = ([panel(12, 12, 'O', lip='o', insets=(2, 1))], None, {'section': s, 'anim': 'name plate: Sam'})
+    for part in ('head', 'chest'):
+        out[S_ + f'adult_part_{part}.png'] = ([adult_part(part, False)], None, {'section': 'bg', 'anim': part})
+        out[S_ + f'adult_ring_{part}.png'] = ([adult_part(part, True)], None, {'section': s, 'anim': f'hover: {part}',
+                                                                                'note': 'Wrong: over the head' if part == 'head' else 'Right: side of the neck and chest'})
+    i = 'Icons'
+    for name in ICONS11:
+        out[U + f'icon_{name}.png'] = ([icon11(name)], None, {'section': i, 'anim': name})
+    for name, fn in L3_PANELS.items():
+        art_ = fn()
+        for coat, cols in COATS.items():
+            out[SC + f'panel_{name}_{coat}.png'] = ([art_], cols, {'section': 'bg', 'anim': name})
+    f = 'The finale and the level select'
+    out[SC + 'finale_bg.png'] = ([draw_finale_bg()], None, {'section': 'bg', 'anim': 'finale'})
+    for coat, cols in COATS.items():
+        out[SC + f'thumb_park_{coat}.png'] = ([thumb_park_open()], cols, {'section': f, 'anim': 'Level 3 thumbnail', 'coat': coat, 'note': 'Open now'})
+    e = 'Extras for Levels 1 and 2'
+    out[U + 'hover_frame.png'] = ([hover_frame()], None, {'section': e, 'anim': 'hover frame', 'note': 'Nine-slice highlight for places (counter, floor spots)'})
+    for part, (hx, hy, hw, hh) in CU_HITS.items():
+        out[U + f'found_cu_{part}.png'] = ([found_ring(hw + 6, hh + 6)], None, {'section': e, 'anim': f'found: {part}', 'note': 'Circles the difference in a close-up'})
+    return out
+
+
+def g11_mockups():
+    caramel = COATS['caramel']
+    t = lambda x, y, w, s, size, col=INK, al='center': ('@text', x, y, w, s, size, col, al)
+    W2 = (640, 360)
+    A = adult_anims_l3()
+    g = WALK['ground']
+    street = draw_street()
+
+    def walk(offset, dog_anim='walk', tight=False):
+        items = [('@canvas', crop(street, offset, 0, 320, 180), 0, 0, 2)]
+        for name, x, y in WALK['distractions']:
+            cv = {'squirrel': squirrel_frames()[0], 'sandwich': sandwich(), 'cat': cat_frames()[0]}[name]
+            if 0 <= x - offset < 320:
+                items.append(('@canvas', cv, (x - offset - cv.w // 2) * 2, (y - cv.h) * 2, 2))
+        kx = WALK['kid_x']
+        n = WALK['tight' if tight else 'slack']
+        items += [('@canvas', kid_walk_frames()[1], kx * 2, (g - KID_H) * 2, 2),
+                  ('@canvas', leash(tight), (kx + WALK['hand'][0]) * 2, (g + WALK['hand'][1]) * 2, 2),
+                  ('@canvas', A[dog_anim][0], (kx + WALK['hand'][0] + n - WALK['collar'][0] - 24) * 2, (g - 48) * 2, 2, caramel)]
+        return items + hud8(52, 'Biscuit', 'leash', 'Walk to the park')
+
+    def park():
+        return [('@canvas', draw_park(), 0, 0, 2), ('@canvas', park_shade(), PARK['shade'][0] * 2, PARK['shade'][1] * 2, 2),
+                ('@canvas', park_tree(), -4 * 2, (PARK['ground'] - 122) * 2, 2), ('@canvas', fountain(), 274 * 2, (PARK['ground'] + 2 - 52) * 2, 2),
+                ('@canvas', water_bowl(True), (PARK['bowl'][0] - 11) * 2, (PARK['bowl'][1] - 12) * 2, 2),
+                ('@canvas', crop(kid('stand'), 0, 0, 40, KID_H), PARK['kid_x'] * 2, (PARK['ground'] - KID_H) * 2, 2)]
+    dog_at = lambda frame, x: ('@canvas', frame, (x - 24) * 2, (PARK['ground'] - 48) * 2, 2, caramel)
+    arc = []
+    for k in range(1, 10):
+        u = k / 10
+        x = PARK['ball'][0] + u * 90; y = PARK['ball'][1] - 4 - 112 * u * (1 - u)
+        arc.append(('@canvas', demo_dot(), round(x * 2) - 6, round(y * 2) - 6, 2))
+    fetch = park() + [dog_at(A['sit'][0], PARK['dog_x'])] + arc + [
+        ('@canvas', tennis_ball(), (PARK['ball'][0] - 18) * 2, (PARK['ball'][1] - 8) * 2, 2),
+        ('@canvas', hand_frames()[1], (PARK['ball'][0] - 22) * 2, (PARK['ball'][1] - 4) * 2, 2)] + hud8(46, 'Biscuit', 'ball', 'Fetch  1 of 2')
+    tired = park() + [dog_at(A['pant'][0], 196), ('@canvas', tennis_ball(), 212 * 2, (PARK['ground'] - 8) * 2, 2)] + hud8(40, 'Biscuit', 'ball', 'Fetch  1 of 2')
+    rest = park() + [dog_at(A['rest'][0], PARK['rest_x']), ('@canvas', water_bowl(True), (PARK['rest_x'] + 14) * 2, (PARK['ground'] - 12) * 2, 2)] + hud8(70, 'Biscuit', 'water', 'Fetch  1 of 2')
+    sx, dx = PARK['sam_x'], PARK['dog_x'] + 30
+    greet = park() + [dog_at(adult_anims()['wag'][1], dx), ('@canvas', adult_part('chest', True), (dx - 24) * 2, (PARK['ground'] - 48) * 2, 2),
+                      ('@canvas', sam('stand').flipped(), sx * 2, (PARK['ground'] - KID_H) * 2, 2),
+                      ('@canvas', sam_hand().flipped(), (dx + 4) * 2, (PARK['ground'] - 26) * 2, 2)] + hud8(60, 'Biscuit', 'pet', 'New friend  2 of 2')
+    stressed = park() + [dog_at(A['stress'][1], dx), ('@canvas', sam('hand').flipped(), sx * 2, (PARK['ground'] - KID_H) * 2, 2)] + hud8(60, 'Biscuit', 'pet', 'New friend  2 of 2')
+    fin = [('@canvas', draw_finale_bg(), 0, 0, 2), t(108, 14, 424, "You're a Pawfect Parent!", 24)]
+    for i, (st, x) in enumerate((('assets/sprites/puppy_caramel_wag.png', 30), ('assets/sprites/young_caramel_wag.png', 122), ('assets/sprites/adult_caramel_wag.png', 214))):
+        fw = (32, 40, 48)[i]
+        fin.append((st, (x + 38 - fw // 2) * 2, (114 - fw) * 2, 2))
+        fin.append(t(x * 2, 284, 152, ('Day 1', 'Check-up Day', 'Park Day')[i], 15))
+    scenes = [('The walk: hold to walk; the leash is loose', W2, walk(0)),
+              ('The walk: a squirrel! The dog lunges and the leash goes tight (let go to stop)', W2, walk(150, 'lunge', True)),
+              ('The walk: the dog sits calmly once the player lets go', W2, walk(150, 'sit')),
+              ('The walk ends at the park gate', W2, walk(640)),
+              ('Fetch: drag the ball back and let go (the dots show where it will land)', W2, fetch),
+              ('Fetch: after a few throws the dog pants and slows down (no UI cues: the player has to notice)', W2, tired),
+              ('Rest: in the shade with a bowl of water', W2, rest),
+              ('A new friend: Sam pets the side of the neck and chest (drag the hand; the target lights up)', W2, greet),
+              ('A new friend, the other variant: stress signals (whale eye, lip lick); the right call is "Not today"', W2, stressed),
+              ('The finale', W2, fin)]
+    ci, sp = panel(18, 18, 'W', ring='E'), speech_bubble()
+    pface = crop(parent_frames()['talk'][1], 11, 5, 26, 26)
+    for name, (who, line) in L3_LINES.items():
+        items = [('@canvas', L3_PANELS[name](), 0, 0, 2, caramel), ('@rect', 0, 0, 640, 30, '#D7C4EC'), ('@rect', 0, 292, 640, 68, '#D7C4EC'),
+                 ('@canvas', nine(ci, 30, 30, 6), 8, 296, 2), ('@canvas', pface, 12, 300, 2),
+                 ('@canvas', nine(sp, 270, 26, 5), 82, 302, 2), ('@text', 98, 312, 518, line.replace('{name}', 'Biscuit'), 16, INK, 'left')]
+        scenes.append((f'Story panel: {name}', W2, items))
+    return scenes
+
+
+GROUPS = {1: group1, 2: group2, 3: group3, 4: group4, 5: group5, 6: group6, 8: group8, 9: group9, 10: group10, 11: group11}
+SCENES = {2: SCENES2, 3: ui_mockups(), 4: screen_mockups(), 5: keyboard_mockups(), 6: l2_mockups(), 8: g8_mockups(), 9: g9_mockups(), 10: g10_mockups(), 11: g11_mockups()}
 
 
 # ---------------------------------------------------------------- check / export / preview

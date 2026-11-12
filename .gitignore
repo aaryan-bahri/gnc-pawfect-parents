@@ -25,3 +25,4 @@ Thumbs.db
 deploy/
 .env
 .env.*
+ART_ARTIFACTS.md

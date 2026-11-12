@@ -40,6 +40,30 @@ GROUP_INFO = {
         'optional wants, and look-alikes that test what the vet taught), a coin jar for the budget, a basket and aisle arrows. The shopping list '
         'paper from group 6 stays on the left and fills with ticks. Item names are shown in the card that opens when an item is tapped, so '
         'the shelves only show prices.', set()),
+    8: ('Dialogue, Demos, Level Select &amp; Time Cards',
+        'The new shared UI. A big dialogue box across the bottom (portrait, name plate, OK) that dims the scene and blocks it until it is '
+        'closed. A ghost hand that shows each mechanic (tap or drag along a dotted path) the first time, and again from the new ? button in the HUD. '
+        'The level select: a cork board with a pinned card per level (Level 3 is frosted and locked). Time cards with five time-of-day icons for jumps '
+        'in the story. Rings are gone: whatever is under the pointer gets a butter outline instead (drawn by the game, so it needs no art per object). '
+        'Last, the coral pen circles that mark a found difference in Level 2.', set()),
+    9: ('Story Panels',
+        'The ten new cutscene panels from the approved story flow, each shown in its cutscene frame with its line: the bedroom on Puppy Day, '
+        'the drive to the rescue centre (a redraw of the car panel with an empty box and a RESCUE sign), the rescue pens, the hug, the afternoon '
+        'play and the sniffing, the first night, the scratching, packing the grooming bag, and the vet with the HEALTHY chart. The kid and the '
+        'parent are drawn in full for the first time (both shown below). Every panel is exported in all three coats; switch coats in the game.', set()),
+    10: ('Level 2: Spot the Difference &amp; Bath Time',
+        'Everything for the rebuilt Level 2. A new, bigger young dog drawn healthy, with each problem the vet looks for as its own layer '
+        '(long nails, ear wax, tartar, fleas): "your" dog shows them all in Spot the Difference, and Bath Time takes them away one by one. '
+        'Two framed pictures on the clinic wall, each with a tray of five products (dog products vs the bag from home; the brush is a decoy). '
+        'Hovering a part rings it in both pictures; tapping it opens both close-ups side by side, where the player taps the difference. Eyes, '
+        'tail and brush are decoys. Bath Time: a bathroom with a tub, a mat and a shelf of six care things that are dragged onto the dog, '
+        'and shampoo foam that grows as the player scrubs.', set()),
+    11: ('Level 3: Park Day, the Finale &amp; Extras',
+        'Everything for Level 3. The adult dog gets its park poses (walking, running, carrying the ball, panting, flopping in the heat, resting, '
+        'drinking, lunging, and the stress signals: whale eye, lip lick, yawn, tucked tail). The walk to the park is a long street that slides '
+        'by while the player holds, with the kid on a loose or tight leash and three distractions. The park has a shady tree, a fountain and a '
+        'water bowl for fetch. Sam is the new friend who asks to pet the dog (sprites, a portrait and a hand to drag). Also: three story panels, '
+        'the finale album spread, an open Level 3 card, ten icons, a hover frame for places that are not sprites, and close-up circles for Level 2.', set()),
 }
 
 
@@ -89,9 +113,9 @@ def render(n, group, palette, coats, sheet_png, scene=None, root=None):
                 layers.append(f'<div class="layer" style="left:{x * 100 / ww}%;top:{y * 100 / wh}%;width:{rw * 100 / ww}%;'
                               f'height:{rh * 100 / wh}%;background:{col}"></div>')
                 continue
-            if item[0] == '@canvas':              # ('@canvas', canvas, x, y, scale): drawn in memory
-                _, cv, x, y, sc = item
-                data, fw = sheet_png([cv]), cv.w
+            if item[0] == '@canvas':              # ('@canvas', canvas, x, y, scale[, coat palette]): drawn in memory
+                _, cv, x, y, sc, *extra = item
+                data, fw = sheet_png([cv], extra[0] if extra else None), cv.w
             else:                                 # (path, x, y[, scale]): exported sheet on disk
                 path, x, y, sc = (item + (1,))[:4]
                 data = (root / path).read_bytes()
